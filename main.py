@@ -2,7 +2,14 @@
 from OpenGL.GL import *
 from OpenGL.GLU import *
 import numpy as np
-import copy 
+# import copy
+
+import sys
+from PyQt5.QtWidgets import *
+from PyQt5 import uic
+
+
+
 
 class Node:
     def __init__(self, name=""):
@@ -33,17 +40,22 @@ class Parsing:
     
     # Make tree structure for parsing hierarchical model
     def make_tree(self, full_list, parent, line_num, channel_list):
+        # print(line_num[0])
         while True:
-            line = full_list[line_num].lstrip().split(' ')
+            # print(line_num[0])
+            line = full_list[line_num[0]].lstrip().split(' ')
             if line[0] == "JOINT" or line[0] == "ROOT":
                 self.joint_num += 1
                 new_node = Node(line[1].rstrip('\n'))
                 # offset
-                offset_data = full_list[line_num+2].lstrip().split(' ')
-                new_Node.offset = np.array([float(offset_data[1]),float(offset_data[2]),float(offset_data[3])])
+                offset_data = full_list[line_num[0]+2].lstrip().split(' ')
+                new_node.offset = np.array([float(offset_data[1]),float(offset_data[2]),float(offset_data[3])])
                 # channel
-                channel_data = full_list[line_num+3].lstrip().split(' ')
+                channel_data = full_list[line_num[0]+3].lstrip().split(' ')
+                # print(self.joint_num)
                 for j in range(3):
+                    if line[0] == "ROOT":
+                        j += 3
                     channel = channel_data[2+j].rstrip('\n')
                     if channel == "XROTATION" or channel == "Xrotation":
                         channel_list.append("X")
@@ -51,31 +63,49 @@ class Parsing:
                         channel_list.append("Y")
                     elif channel == "ZROTATION" or channel == "Zrotation":
                         channel_list.append("Z")
-                
-                if(line[0] != "ROOT"):
+                print(len(channel_list))
+
+                if line[0] != "ROOT":
                     parent.child.append(new_node)
-                line_num += 4
-                parent = new_node
-                line_num, channel_list = make_tree(full_list, parent, line_num, channel_list)
-                parent = new_node
+                else:
+                    parent = new_node
+                line_num[0] += 4
+                # parent = new_node
+                # print(new_node.name)
+                self.make_tree(full_list, new_node, line_num, channel_list)
+                # parent = new_node
+                # print(new_node.name)
             elif line[0] == "End":
-                new_Node = Node("__END__")
+                new_node = Node("__END__")
                 # offset
-                offset_data = full_list[line_num+2].lstrip().split(' ')
-                new_Node.offset = np.array([float(offset_data[1]),float(offset_data[2]),float(offset_data[3])])
+                offset_data = full_list[line_num[0]+2].lstrip().split(' ')
+                new_node.offset = np.array([float(offset_data[1]),float(offset_data[2]),float(offset_data[3])])
                 
                 parent.child.append(new_node)
-                line_num += 3
+                line_num[0] += 3
+                self.make_tree(full_list, new_node, line_num, channel_list)
+                
             elif line[0] == '}\n':
-                line_num += 1
-                return line_num, channel_list
+                line_num[0] += 1
+                return
+                
+            elif line[0] == "MOTION\n":
+                return
             else:
-                line_num += 1
+                line_num[0] += 1
         
     def make_postures(self, full_list, start_line_num, channel_list):
+        # get frames
+        temp_frame= full_list[start_line_num+1].split(' ')
+        if len(temp_frame) == 1:
+            temp_frame = full_list[start_line_num+1].split('\t')
+        self.frames = int(temp_frame[1])
+
         line_num = start_line_num + 3
-        self.frames = int((full_list[line_num-1].split('\t'))[1])
         postures = []
+        # print(self.frames)
+        # print(self.joint_num)
+        # print(len(channel_list))
         for i in range(self.frames):
             line = full_list[line_num+i].split(' ')
             posture = Posture()
@@ -84,8 +114,10 @@ class Parsing:
                 M = np.identity(4)
                 for k in range(3):
                     R = np.identity(4)
+                    channel_index = 3*j+k
+                    # print(channel_index)
                     channel_value = channel_list[3*j+k]
-                    th = np.radians(float(line[3*(j+1)+k])
+                    th = np.radians(float(line[3*(j+1)+k]))
                     if channel_value == "X":
                         R[:3,:3] = [[1., 0., 0.],
                                     [0., np.cos(th), -np.sin(th)],
@@ -114,6 +146,18 @@ class Draw:
         self.varr = None
         self.iarr = None
         self.cur_index = 0
+    
+    def drawgrid(self):
+        for i in range(21):
+            glPushMatrix()
+            glBegin(GL_LINES)
+            glColor3ub(80,80,80)
+            glVertex3fv(np.array([-1.0+0.1*i,0.,1.0]))
+            glVertex3fv(np.array([-1.0+0.1*i,0.,-1.0]))
+            glVertex3fv(np.array([1.0,0.,-1.0+0.1*i]))
+            glVertex3fv(np.array([-1.0,0.,-1.0+0.1*i]))
+            glEnd()
+            glPopMatrix()
     
     def drawframe(self):
         glBegin(GL_LINES)
@@ -186,7 +230,7 @@ class Draw:
     def draw_proper_cube(self, offset):
         M = np.identity(4)
         half = np.sqrt(np.dot(offset,offset)) / 2.
-        M[:3,:3] = get_RotationM(offset)
+        M[:3,:3] = self.get_RotationM(offset)
         
         glPushMatrix()
         glMultMatrixf(M.T)
@@ -194,7 +238,7 @@ class Draw:
         scale_x = half * 0.9
         scale_yz = scale_x * 0.2 
         glScalef(scale_x, scale_yz, scale_yz)
-        drawCube_glDrawElements()
+        self.drawCube_glDrawElements()
         glPopMatrix()
 
     # draw_Model(motion.skeleton.root, index), index의 0은 몇번째 posture 사용할지 1은 몇번째 Rmatrix 사용할지
@@ -202,18 +246,18 @@ class Draw:
         glPushMatrix()
         # End site
         if node.name == "__END__":
-            draw_proper_cube(node.offset)
+            self.draw_proper_cube(node.offset)
         
         # joint & root
         else:
-            draw_proper_cube(node.offset)
+            self.draw_proper_cube(node.offset)
             glTranslatef(node.offset[0], node.offset[1], node.offset[2])
             M = self.event_handle.motion.postures[index[0]][index[1]]
             glMultMatrixf(M.T)
             index[1] += 1
 
             for child in node.child:
-                draw_Model(child, index)
+                self.draw_Model(child, index)
         glPopMatrix()
     
     def render(self):
@@ -223,16 +267,18 @@ class Draw:
         
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
+        scale = self.event_handle.scale
         glOrtho(-scale,scale,-scale,scale,-1,1)
         
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
-        real_eye = event_handle.eye + event_handle.trans
-        real_at = event_handle.at + event_handle.trans
+        real_eye = self.event_handle.eye + self.event_handle.trans
+        real_at = self.event_handle.at + self.event_handle.trans
+        cameraUp = self.event_handle.cameraUp
         gluLookAt(real_eye[0],real_eye[1],real_eye[2],real_at[0],real_at[1],real_at[2],cameraUp[0],cameraUp[1],cameraUp[2])
         
-        drawframe()
-        drawgrid()
+        self.drawframe()
+        self.drawgrid()
         
         glPushMatrix()
         
@@ -282,22 +328,22 @@ class Draw:
         glMaterialfv(GL_FRONT,GL_SHININESS,100)
         glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
         
-        # Model drawing
-        if self.event_handle.timeline_changed:
-            self.cur_index = self.event_handle.timeline
-            self.event_handle.timeline_changed = False
+        # # Model drawing
+        # if self.event_handle.timeline_changed:
+        #     self.cur_index = self.event_handle.timeline
+        #     self.event_handle.timeline_changed = False
         
-        scale_ratio = 0.3
-        if event_handle.ENABLE_FLAG:
-            myMotion = self.event_handle.motion
-            if cur_index == myMotion.frames:
-                event_handle.START_FLAG = False
-            index = [self.cur_index, 0]
-            if event_handle.START_FLAG:
-                self.cur_index += 1
-            glColor3ub(0,0,200)
-            glScalef(scale_ratio,scale_ratio,scale_ratio)
-            draw_Model(myMotion.skeleton.root, index)
+        # scale_ratio = 0.3
+        # if self.event_handle.ENABLE_FLAG:
+        #     myMotion = self.event_handle.motion
+        #     if self.cur_index == myMotion.frames:
+        #         self.event_handle.START_FLAG = False
+        #     index = [self.cur_index, 0]
+        #     if self.event_handle.START_FLAG:
+        #         self.cur_index += 1
+        #     glColor3ub(0,0,200)
+        #     glScalef(scale_ratio,scale_ratio,scale_ratio)
+        #     self.draw_Model(myMotion.skeleton.root, index)
         
         glDisable(GL_LIGHTING)
         glPopMatrix()
@@ -323,55 +369,55 @@ class Event_handle:
 
         self.motion = None
 
-    def button_callback(self,window,button,action,mod):
-        if action == glfw.PRESS:
-            self.init_pos = glfw.get_cursor_pos(window)
+    # def button_callback(self,window,button,action,mod):
+    #     if action == glfw.PRESS:
+    #         self.init_pos = glfw.get_cursor_pos(window)
             
-            if button == glfw.MOUSE_BUTTON_LEFT:
-                self.Left_pressed = True
-            elif button == glfw.MOUSE_BUTTON_RIGHT:
-                self.Right_pressed = True
-        elif action == glfw.RELEASE:
-            if button == glfw.MOUSE_BUTTON_LEFT:
-                self.Left_pressed = False
-            elif button == glfw.MOUSE_BUTTON_RIGHT:
-                self.Right_pressed = False
+    #         if button == glfw.MOUSE_BUTTON_LEFT:
+    #             self.Left_pressed = True
+    #         elif button == glfw.MOUSE_BUTTON_RIGHT:
+    #             self.Right_pressed = True
+    #     elif action == glfw.RELEASE:
+    #         if button == glfw.MOUSE_BUTTON_LEFT:
+    #             self.Left_pressed = False
+    #         elif button == glfw.MOUSE_BUTTON_RIGHT:
+    #             self.Right_pressed = False
 
-    def cursor_callback(self,window,xpos,ypos):
-        if self.Left_pressed:
-            self.degree1 += (self.init_pos[0] - xpos) * 0.02
-            self.degree2 += (-self.init_pos[1] + ypos) * 0.02
-            if self.degree2 >= 0.:
-                self.degree2 %= 360.
-            else:
-                self.degree2 %= -360.
+    # def cursor_callback(self,window,xpos,ypos):
+    #     if self.Left_pressed:
+    #         self.degree1 += (self.init_pos[0] - xpos) * 0.02
+    #         self.degree2 += (-self.init_pos[1] + ypos) * 0.02
+    #         if self.degree2 >= 0.:
+    #             self.degree2 %= 360.
+    #         else:
+    #             self.degree2 %= -360.
             
-            if 90. <= self.degree2 and self.degree2 <= 270.:
-                self.cameraUp[1] = -1.
-            elif -90. >= self.degree2 and self.degree2 >= -270.:
-                self.cameraUp[1] = -1.
-            else:
-                self.cameraUp[1] = 1.
-            self.eye[0] = 0.1 * np.cos(np.radians(self.degree2)) * np.sin(np.radians(self.degree1))
-            self.eye[1] = 0.1 * np.sin(np.radians(self.degree2))
-            self.eye[2] = 0.1 * np.cos(np.radians(self.degree2)) * np.cos(np.radians(self.degree1))
+    #         if 90. <= self.degree2 and self.degree2 <= 270.:
+    #             self.cameraUp[1] = -1.
+    #         elif -90. >= self.degree2 and self.degree2 >= -270.:
+    #             self.cameraUp[1] = -1.
+    #         else:
+    #             self.cameraUp[1] = 1.
+    #         self.eye[0] = 0.1 * np.cos(np.radians(self.degree2)) * np.sin(np.radians(self.degree1))
+    #         self.eye[1] = 0.1 * np.sin(np.radians(self.degree2))
+    #         self.eye[2] = 0.1 * np.cos(np.radians(self.degree2)) * np.cos(np.radians(self.degree1))
             
-        elif self.Right_pressed:
-            cameraFront = self.eye - self.at
-            temp1 = np.cross(cameraFront, self.cameraUp)
-            u = temp1/np.sqrt(np.dot(temp1,temp1))
-            temp2 = np.cross(u,cameraFront)
-            w = temp2/np.sqrt(np.dot(temp2,temp2))
-            self.trans += u *(-init_pos[0]+xpos)*0.0001
-            self.trans += w *(-init_pos[1]+ypos)*0.0001
+    #     elif self.Right_pressed:
+    #         cameraFront = self.eye - self.at
+    #         temp1 = np.cross(cameraFront, self.cameraUp)
+    #         u = temp1/np.sqrt(np.dot(temp1,temp1))
+    #         temp2 = np.cross(u,cameraFront)
+    #         w = temp2/np.sqrt(np.dot(temp2,temp2))
+    #         self.trans += u *(-self.init_pos[0]+xpos)*0.0001
+    #         self.trans += w *(-self.init_pos[1]+ypos)*0.0001
         
-    def scroll_callback(self,window,xoffset,yoffset): 
-        if self.scale <= 0.1 and yoffset == 1:
-            self.scale = 0.1
-            return
-        self.scale -= 0.1 * yoffset
+    # def scroll_callback(self,window,xoffset,yoffset): 
+    #     if self.scale <= 0.1 and yoffset == 1:
+    #         self.scale = 0.1
+    #         return
+    #     self.scale -= 0.1 * yoffset
 
-    def drop_callback(self,window,paths):
+    def drop_callback(self, paths):
         self.ENABLE_FLAG = True
         self.START_FLAG = False
         self.timeline_changed = True
@@ -382,55 +428,108 @@ class Event_handle:
         # Make "motion" object
         parsing = Parsing()
         self.full_list = file.readlines()
+        # for i in self.full_list:
+        #     print(i)
+        # print(len(self.full_list))
         root = Node()
-        line_num = 0
+        line_num = [0]
         channel_list = []
         postures = []
-        line_num, channel_list = parsing.make_tree(self.full_list, root, line_num, channel_list)
-        postures = parsing.make_postures(self.full_list, line_num, channel_list)
+        parsing.make_tree(self.full_list, root, line_num, channel_list)
+        # print("motion Num: %d"%(line_num[0]))
+        # print(channel_list)
+        postures = parsing.make_postures(self.full_list, line_num[0], channel_list)
         skeleton = Skeleton(root, parsing.joint_num)
         self.motion = Motion(skeleton, postures, parsing.frames)
 
         print("File name: %s"%(file_name))
-        print_data()
+        # print_data()
         print("###########################################################")
         file.close()
 
-    def key_callback(self,window, key, scancode, action, mods):
-        if action==glfw.PRESS or action == glfw.REPEAT:
-            if key == glfw.KEY_SPACE:
-                self.START_FLAG = True
-            
+    # def key_callback(self,window, key, scancode, action, mods):
+    #     if action==glfw.PRESS or action == glfw.REPEAT:
+    #         if key == glfw.KEY_SPACE:
+    #             self.START_FLAG = True
 
-t1 = 0.
+form_class = uic.loadUiType("MotionViewer.ui")[0]
+
+#화면을 띄우는데 사용되는 Class 선언
+# QMainWindow
+class WindowClass(QDialog, form_class) :
+    def __init__(self, draw) :
+        super().__init__()
+        self.draw = draw
+        self.event_handle = self.draw.event_handle
+        self.setupUi(self)
+        self.setWindowTitle("moooti")
+        self.setAcceptDrops(True)
+
+        self.openGLWidget.initializeGL()
+        self.openGLWidget.paintGL = self.draw.render
+
+        # event handle
+        self.start_button.clicked.connect(self.button1Function)
+        
+        # self.openGLWidget.
+        
+        # self.btn_2.clicked.connect(self.button2Function)
+
+    def button1Function(self):
+        print("btn_1 Clicked")
+    
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        file_path = [unicode(u.toLocalFile()) for u in event.mimeData().urls()]
+        self.event_handle.drop_callback(file_path)
+
 def main():
-    global t1
+    app = QApplication(sys.argv)
     event_handle = Event_handle()
     draw = Draw(event_handle)
     draw.createVertexAndIndexArrayIndexed()
+    myWindow = WindowClass(draw)
+    myWindow.show()
+    sys.exit(app.exec_())
 
-    if not glfw.init():
-        return
-    t1 = glfw.get_time()
-    window = glfw.create_window(700,700,'2015004302', None,None)
-    if not window:
-        glfw.terminate()
-        return
-    
-    glfw.make_context_current(window)
-    glfw.set_cursor_pos_callback(window,cursor_callback)
-    glfw.set_mouse_button_callback(window,button_callback)
-    glfw.set_scroll_callback(window,scroll_callback)
-    glfw.set_drop_callback(window,drop_callback)
-    glfw.set_key_callback(window,key_callback)
-    glfw.swap_interval(1)
-    
-    while not glfw.window_should_close(window):
-        glfw.poll_events()
-        render()
-        glfw.swap_buffers(window)
-
-    glfw.terminate()
-
-if __name__ == "__main__":
+if __name__ == "__main__" :
     main()
+
+
+# t1 = 0.
+# def main():
+#     global t1
+#     event_handle = Event_handle()
+#     draw = Draw(event_handle)
+#     draw.createVertexAndIndexArrayIndexed()
+
+#     if not glfw.init():
+#         return
+#     t1 = glfw.get_time()
+#     window = glfw.create_window(700,700,'2015004302', None,None)
+#     if not window:
+#         glfw.terminate()
+#         return
+    
+#     glfw.make_context_current(window)
+#     glfw.set_cursor_pos_callback(window,cursor_callback)
+#     glfw.set_mouse_button_callback(window,button_callback)
+#     glfw.set_scroll_callback(window,scroll_callback)
+#     glfw.set_drop_callback(window,drop_callback)
+#     glfw.set_key_callback(window,key_callback)
+#     glfw.swap_interval(1)
+    
+#     while not glfw.window_should_close(window):
+#         glfw.poll_events()
+#         render()
+#         glfw.swap_buffers(window)
+
+#     glfw.terminate()
+
+# if __name__ == "__main__":
+#     main()
