@@ -6,20 +6,30 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1027</width>
-    <height>774</height>
+    <width>1170</width>
+    <height>752</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
-  <widget class="QFrame" name="main_view">
+  <widget class="myopenGL" name="openGLWidget">
    <property name="geometry">
     <rect>
-     <x>140</x>
-     <y>80</y>
-     <width>491</width>
-     <height>401</height>
+     <x>100</x>
+     <y>20</y>
+     <width>741</width>
+     <height>431</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QFrame" name="frame">
+   <property name="geometry">
+    <rect>
+     <x>100</x>
+     <y>470</y>
+     <width>741</width>
+     <height>121</height>
     </rect>
    </property>
    <property name="frameShape">
@@ -28,51 +38,140 @@
    <property name="frameShadow">
     <enum>QFrame::Raised</enum>
    </property>
-   <widget class="QGraphicsView" name="graphicsView">
+   <widget class="QPushButton" name="startButton">
     <property name="geometry">
      <rect>
-      <x>90</x>
-      <y>-10</y>
-      <width>371</width>
-      <height>271</height>
+      <x>40</x>
+      <y>40</y>
+      <width>71</width>
+      <height>51</height>
      </rect>
     </property>
+    <property name="text">
+     <string>PLAY</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="fplusButton">
+    <property name="geometry">
+     <rect>
+      <x>396</x>
+      <y>50</y>
+      <width>91</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>&gt;&gt;</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="fminusButton">
+    <property name="geometry">
+     <rect>
+      <x>320</x>
+      <y>50</y>
+      <width>81</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>&lt;&lt;</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="initButton">
+    <property name="geometry">
+     <rect>
+      <x>110</x>
+      <y>40</y>
+      <width>81</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>INIT</string>
+    </property>
+   </widget>
+   <widget class="QWidget" name="horizontalLayoutWidget">
+    <property name="geometry">
+     <rect>
+      <x>550</x>
+      <y>50</y>
+      <width>121</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>Frame:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="frameNumEdit"/>
+     </item>
+    </layout>
    </widget>
   </widget>
-  <widget class="QPushButton" name="start_button">
+  <widget class="mySlider" name="timeLine">
    <property name="geometry">
     <rect>
-     <x>740</x>
-     <y>460</y>
-     <width>75</width>
-     <height>23</height>
+     <x>180</x>
+     <y>620</y>
+     <width>581</width>
+     <height>31</height>
     </rect>
    </property>
-   <property name="text">
-    <string>Start</string>
+   <property name="orientation">
+    <enum>Qt::Horizontal</enum>
    </property>
   </widget>
-  <widget class="QListView" name="frame_data">
+  <widget class="QWidget" name="verticalLayoutWidget">
    <property name="geometry">
     <rect>
-     <x>750</x>
-     <y>150</y>
-     <width>161</width>
-     <height>121</height>
+     <x>880</x>
+     <y>40</y>
+     <width>241</width>
+     <height>131</height>
     </rect>
    </property>
-  </widget>
-  <widget class="QOpenGLWidget" name="openGLWidget">
-   <property name="geometry">
-    <rect>
-     <x>240</x>
-     <y>510</y>
-     <width>300</width>
-     <height>200</height>
-    </rect>
-   </property>
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QLabel" name="totalFrame">
+      <property name="text">
+       <string>Total frames:</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QLabel" name="currentFrame">
+      <property name="text">
+       <string>Current frame:</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QLabel" name="origin">
+      <property name="text">
+       <string>Origin: </string>
+      </property>
+     </widget>
+    </item>
+   </layout>
   </widget>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>mySlider</class>
+   <extends>QSlider</extends>
+   <header>myWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>myopenGL</class>
+   <extends>QOpenGLWidget</extends>
+   <header>myWidget.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>
