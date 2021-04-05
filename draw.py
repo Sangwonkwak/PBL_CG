@@ -17,6 +17,7 @@ class Posture:
     def __init__(self, origin=None, Rmatrix=[]):
         self.origin = origin
         self.Rmatrix = Rmatrix
+        self.framebuffer = []
 
 class Motion:
     def __init__(self, skeleton=None, postures=None, frames=0):
@@ -246,25 +247,37 @@ class Draw:
         self.drawCube_glDrawElements()
         glPopMatrix()
 
-    # draw_Model(motion.skeleton.root, index), index의 0은 몇번째 posture 사용할지 1은 몇번째 Rmatrix 사용할지
-    def draw_Model(self, node, index):
-        glPushMatrix()
-        # End site
-        if node.name == "__END__":
-            self.draw_proper_cube(node.offset)
-        # joint & root
-        else:
-            self.draw_proper_cube(node.offset)
-            glTranslatef(node.offset[0], node.offset[1], node.offset[2])
-            posture = self.opengl.motion.postures[index[0]]
-            M = posture.Rmatrix[index[1]]
-            glMultMatrixf(M.T)
-            index[1] += 1
-
+    def make_framebuffer(self, node, posture, index, mat):
+        if node.name != "__END__":
+            M = np.array(posture.Rmatrix[index[0]])
+            if index[0] > 0:
+                M[:-1,3] = [node.offset[0], node.offset[1], node.offset[2]]
+            mat = mat @ M
+            posture.framebuffer.append(mat)
+            index[0] += 1
             for child in node.child:
-                self.draw_Model(child, index)
+                self.make_framebuffer(child, posture, index, np.array(mat))
+
+    # mat은 이전까지의 current_matrix
+    def draw_Model(self, node, posture, index, mat):
+        glPushMatrix()
+        glMultMatrixf(mat.T)
+        self.draw_proper_cube(node.offset)
         glPopMatrix()
+        # joint&root  
+        if node.name != "__END__":
+            num = index[0]
+            index[0] += 1
+            for child in node.child:
+                self.draw_Model(child, posture, index, posture.framebuffer[num])
     
+    def draw_process(self, motion, timeline):
+        for i in range(-1,1):
+            posture = motion.postures[timeline + i]
+            if len(posture.framebuffer) == 0:
+                self.make_framebuffer(motion.skeleton.root, posture, [0], np.identity(4))
+        self.draw_Model(motion.skeleton.root, motion.postures[timeline], [0], np.identity(4))
+
     def render(self):
         # print("Called")
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -327,7 +340,7 @@ class Draw:
         glLightfv(GL_LIGHT4,GL_SPECULAR,lightColor2)
         glLightfv(GL_LIGHT4,GL_AMBIENT,ambientLightColor)
         
-        # Object color setting
+        # Object texture setting
         objectColor = (.3, .3, .7, 1.)
         specularObjectColor = (1.,1.,1.,1.)
         glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
@@ -337,29 +350,32 @@ class Draw:
         # Model drawing        
         scale_ratio = 0.005
         if self.opengl.ENABLE_FLAG:
+            timeline = self.opengl.timeline
+            motion = self.opengl.motion
             if self.opengl.timeline_changed:
-                if self.opengl.timeline < 0:
+                if timeline < 0:
                     self.opengl.timeline = 0
-                if self.opengl.timeline > self.opengl.motion.frames:
-                    self.opengl.timeline = self.opengl.motion.frames
+                if timeline > motion.frames:
+                    self.opengl.timeline = motion.frames
                 self.opengl.timeline_changed = False
             
-            myMotion = self.opengl.motion
-            if self.opengl.timeline >= myMotion.frames:
+            if self.opengl.timeline >= motion.frames:
                 self.opengl.START_FLAG = False
-                self.opengl.timeline = myMotion.frames
-            index = [self.opengl.timeline, 0]
+                self.opengl.timeline = motion.frames
             
-            glColor3ub(0,0,200)
             glScalef(scale_ratio,scale_ratio,scale_ratio)
             if not self.opengl.START_FLAG:
-                self.draw_Model(myMotion.skeleton.root, index)
+                self.draw_process(motion, timeline)
+                # print("timeline: %d"%timeline)
+                # for item in motion.postures[timeline].framebuffer:
+                #     print(item, end='')
+                # print()
                 glDisable(GL_LIGHTING)
                 glPopMatrix()
                 return
-  
+
+            self.draw_process(motion, timeline)
             self.opengl.timeline += 1
-            self.draw_Model(myMotion.skeleton.root, index)
             glDisable(GL_LIGHTING)
             glPopMatrix()
             self.opengl.update()

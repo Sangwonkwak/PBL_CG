@@ -66,6 +66,10 @@ class myopenGL(QOpenGLWidget):
         postures = parsing.make_postures(self.full_list, line_num[0], channel_list)
         skeleton = Skeleton(root, parsing.joint_num)
         
+        # for i in range(parsing.joint_num):
+        #     print(postures[1].Rmatrix[i], end=' ')
+        # print()
+
         self.motion = Motion(skeleton, postures, parsing.frames)
         
 
