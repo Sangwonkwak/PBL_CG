@@ -3,8 +3,6 @@ from PyQt5.QtWidgets import *
 from PyQt5 import uic
 from PyQt5.QtCore import Qt
 
-# from OpenGL.GL import *
-# from OpenGL.GLU import *
 import numpy as np
 from draw import *
 
@@ -52,7 +50,6 @@ class myopenGL(QOpenGLWidget):
         file_path = [unicode(u.toLocalFile()) for u in e.mimeData().urls()]
         self.ENABLE_FLAG = True
         self.START_FLAG = False
-        # self.START_FLAG = True
         self.timeline_changed = True
         self.timeline = 0
         file_name = ''.join(file_path)
@@ -62,31 +59,20 @@ class myopenGL(QOpenGLWidget):
         parsing = Parsing()
         self.full_list = file.readlines()
         
-        # root = Node()
         line_num = [0]
         channel_list = []
         postures = []
         root = parsing.make_tree(self.full_list, Node(), line_num, channel_list)
-        # self.print_data(root)
         postures = parsing.make_postures(self.full_list, line_num[0], channel_list)
-        # for i in postures:
-        #     print(i.origin)
         skeleton = Skeleton(root, parsing.joint_num)
-        # print("skeleton root name: %s" %skeleton.root.name)
+        
         self.motion = Motion(skeleton, postures, parsing.frames)
-        # print(self.motion.postures[0].Rmatrix[0])
-        # print(self.motion.frames)
+        
 
         print("File name: %s"%(file_name))
-        # self.print_data(root)
         print("###########################################################")
         file.close()
         self.update()
-
-    # def print_data(self, node):
-    #     print("node_name: %s"%(node.name))
-    #     for i in node.child:
-    #         self.print_data(i)
 
     def mouseButtonKind(self, button):
         if button & Qt.LeftButton:
@@ -100,6 +86,9 @@ class myopenGL(QOpenGLWidget):
         
     def mousePressEvent(self, e):
         button = self.mouseButtonKind(e.button())
+        self.init_pos[0] = e.x()
+        self.init_pos[1] = e.y()
+
         if button == 'LEFT':
             print("LEFT")
             self.Left_pressed = True
@@ -121,11 +110,8 @@ class myopenGL(QOpenGLWidget):
     def mouseMoveEvent(self, e):
         xpos = e.x()
         ypos = e.y()
-        ratio = 0.002
         if self.Left_pressed:
-            print("left_pressed")
-            # self.degree1 += (self.init_pos[0] - xpos) * ratio
-            # self.degree2 += (-self.init_pos[1] + ypos) * ratio
+            ratio = 0.02
             self.degree1 += (self.init_pos[0] - xpos) * ratio
             self.degree2 += (-self.init_pos[1] + ypos) * ratio
             if self.degree2 >= 0.:
@@ -144,20 +130,19 @@ class myopenGL(QOpenGLWidget):
             self.eye[2] = 0.1 * np.cos(np.radians(self.degree2)) * np.cos(np.radians(self.degree1))
             
         elif self.Right_pressed:
-            print("right_pressed")
+            ratio = 0.0001
             cameraFront = self.eye - self.at
             temp1 = np.cross(cameraFront, self.cameraUp)
             u = temp1/np.sqrt(np.dot(temp1,temp1))
             temp2 = np.cross(u,cameraFront)
             w = temp2/np.sqrt(np.dot(temp2,temp2))
-            self.trans += u *(-self.init_pos[0]+xpos)*0.00002
-            self.trans += w *(-self.init_pos[1]+ypos)*0.00002
+            self.trans += u *(-self.init_pos[0]+xpos)*ratio
+            self.trans += w *(-self.init_pos[1]+ypos)*ratio
         self.update()
     
     def wheelEvent(self, e):
         ratio = 0.03
         yoffset = e.angleDelta().y() * ratio
-        # print(yoffset)
         if self.scale <= 0.1 and yoffset == 1:
             self.scale = 0.1
             return
@@ -170,7 +155,6 @@ class myopenGL(QOpenGLWidget):
             text1 = "Total frames: " + str(self.motion.frames)
             text2 = "Current frame: " + str(self.timeline)
             text3 = "Origin: " + str(self.motion.postures[self.timeline].origin)
-            # text3 = "Origin: "
             self.textList[0].setText(text1)
             self.textList[1].setText(text2)
             self.textList[2].setText(text3)

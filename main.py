@@ -1,18 +1,9 @@
-# import sys
-# from PyQt5.QtWidgets import *
-# from PyQt5 import uic
-# import glfw
-# from OpenGL.GL import *
-# from OpenGL.GLU import *
-# import numpy as np
-# import copy
-import time
 import sys
 from PyQt5.QtWidgets import *
 from PyQt5 import uic
-# from PyQt5.QtCore import Qt
+
 from myWidget import *
-from draw import Draw
+from draw import *
 
 form_class = uic.loadUiType("MotionViewer.ui")[0]
 
@@ -23,17 +14,13 @@ class WindowClass(QDialog, form_class) :
         self.fplusButton.setAutoRepeat(True)
         self.fminusButton.setAutoRepeat(True)
         self.startButton.setAutoDefault(False)
-        # self.stopButton.setAutoDefault(False)
         self.fplusButton.setAutoDefault(False)
         self.fminusButton.setAutoDefault(False)
         self.initButton.setAutoDefault(False)
 
         # event handle
         self.startButton.clicked.connect(self.start_click_cb)
-        # self.stopButton.clicked.connect(self.stop_click_cb)
-        # self.fplusButton.clicked.connect(self.fplus_click_cb)
         self.fplusButton.pressed.connect(self.fplus_press_cb)
-        # self.fminusButton.clicked.connect(self.fminus_click_cb)
         self.fminusButton.pressed.connect(self.fminus_press_cb)
         self.initButton.clicked.connect(self.init_click_cb)
         self.frameNumEdit.returnPressed.connect(self.frameNum_change_cb)
@@ -51,25 +38,10 @@ class WindowClass(QDialog, form_class) :
         self.openGLWidget.addTextObj(self.currentFrame)
         self.openGLWidget.addTextObj(self.origin)
         self.openGLWidget.setSlider(self.timeLine)
-        # self.frameNumEdit.setOpenGL(self.openGLWidget)
 
     def start_click_cb(self):
         self.openGLWidget.START_FLAG = not self.openGLWidget.START_FLAG
         self.openGLWidget.update()
-
-    # def stop_click_cb(self):
-    #     self.openGLWidget.START_FLAG = False
-    #     self.openGLWidget.update()
-
-    # def fplus_click_cb(self):
-    #     self.openGLWidget.timeline_changed = True
-    #     self.openGLWidget.timeline += 1
-    #     self.openGLWidget.update()
-
-    # def fminus_click_cb(self):
-    #     self.openGLWidget.timeline_changed = True
-    #     self.openGLWidget.timeline -= 1
-    #     self.openGLWidget.update()
 
     def fplus_press_cb(self):
         self.openGLWidget.timeline_changed = True

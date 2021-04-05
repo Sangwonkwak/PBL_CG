@@ -1,7 +1,7 @@
 from OpenGL.GL import *
 from OpenGL.GLU import *
 import numpy as np
-import copy
+
 class Node:
     def __init__(self, name=None):
         self.name = name
@@ -36,7 +36,6 @@ class Parsing:
             if line[0] == "JOINT" or line[0] == "ROOT":
                 self.joint_num += 1
                 new_node = Node(line[1].rstrip('\n'))
-                # print(new_node.name)
                 # offset
                 offset_data = full_list[line_num[0]+2].lstrip().split(' ')
                 new_node.offset = np.array([float(offset_data[1]),float(offset_data[2]),float(offset_data[3])])
@@ -55,8 +54,6 @@ class Parsing:
 
                 if line[0] != "ROOT":
                     parent.child.append(new_node)
-                # else:
-                #     parent = new_node
                 line_num[0] += 4
                 self.make_tree(full_list, new_node, line_num, channel_list)
             elif line[0] == "End":
@@ -100,9 +97,7 @@ class Parsing:
             if len(line) == 1:
                 line = full_list[line_num+i].split('\t')
             # posture = Posture()
-            # origin = [float(line[0]), float(line[1]), float(line[2])]
             origin = [float(line[0]), float(line[1]), float(line[2])]
-            
             rmatrix = []
             for j in range(self.joint_num):
                 M = np.identity(4)
@@ -126,23 +121,19 @@ class Parsing:
                                     [0., 0., 1.]
                                     ]
                     M = M @ R
+                
                 # posture.Rmatrix.append(M)
                 rmatrix.append(M)
-            # if i < 3:
-            #     print(origin)
+            
             rmatrix[0][:-1,3] = origin
-            # posture = Posture(origin, rmatrix)
-            # posture.Rmatrix[0][:-1,3] = posture.origin
-            # if i < 3:
-            #     print(rmatrix[0])
-            # if i < 10:
-            #     print(posture.Rmatrix[0])
             postures.append(Posture(origin, rmatrix))
-            # if i == 400:
-            #     print(postures[0].origin)
-            #     print(postures[1].origin)
-            #     print(postures[2].origin)
-        
+        #     posture.Rmatrix[0][:-1,3] = origin
+        #     posture.origin = origin
+        #     postures.append(posture)
+        # for i in range(4):
+        #     print(postures[i].Rmatrix[0])
+        #     print(postures[i].Rmatrix[1])
+        #     print(postures[i].origin)
         return postures
      
 class Draw:
@@ -150,7 +141,6 @@ class Draw:
         self.opengl = None
         self.varr = None
         self.iarr = None
-        self.cur_index = 0
     
     def setOpengl(self, opengl):
         self.opengl = opengl
@@ -258,25 +248,16 @@ class Draw:
 
     # draw_Model(motion.skeleton.root, index), index의 0은 몇번째 posture 사용할지 1은 몇번째 Rmatrix 사용할지
     def draw_Model(self, node, index):
-        # print("model_node_name:%s"%node.name)
         glPushMatrix()
         # End site
         if node.name == "__END__":
             self.draw_proper_cube(node.offset)
-        
         # joint & root
         else:
             self.draw_proper_cube(node.offset)
             glTranslatef(node.offset[0], node.offset[1], node.offset[2])
-            # M = self.opengl.motion.postures[index[0]][index[1]]
             posture = self.opengl.motion.postures[index[0]]
-            # for i in temp_M:
-            #     print(i)
-            # print(" index[0] index[1]: %d %d"%(index[0],index[1]))   
             M = posture.Rmatrix[index[1]]
-            # M = np.identity(4)
-            # print(posture.origin)
-            # print(M)
             glMultMatrixf(M.T)
             index[1] += 1
 
@@ -353,28 +334,22 @@ class Draw:
         glMaterialfv(GL_FRONT,GL_SHININESS,100)
         glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
         
-        # Model drawing
-        # timeline = self.opengl.timeline
-        if self.opengl.timeline_changed:
-            if self.opengl.timeline < 0:
-                self.opengl.timeline = 0
-            if self.opengl.timeline > self.opengl.motion.frames:
-                self.opengl.timeline = self.opengl.motion.frames
-            # self.cur_index = self.opengl.timeline
-            self.opengl.timeline_changed = False
-
-        
+        # Model drawing        
         scale_ratio = 0.005
         if self.opengl.ENABLE_FLAG:
+            if self.opengl.timeline_changed:
+                if self.opengl.timeline < 0:
+                    self.opengl.timeline = 0
+                if self.opengl.timeline > self.opengl.motion.frames:
+                    self.opengl.timeline = self.opengl.motion.frames
+                self.opengl.timeline_changed = False
+            
             myMotion = self.opengl.motion
             if self.opengl.timeline >= myMotion.frames:
                 self.opengl.START_FLAG = False
-                # self.cur_index -= 1
                 self.opengl.timeline = myMotion.frames
-            # index = [self.cur_index, 0]
             index = [self.opengl.timeline, 0]
             
-
             glColor3ub(0,0,200)
             glScalef(scale_ratio,scale_ratio,scale_ratio)
             if not self.opengl.START_FLAG:
@@ -382,9 +357,7 @@ class Draw:
                 glDisable(GL_LIGHTING)
                 glPopMatrix()
                 return
-
-            # self.cur_index += 1
-            
+  
             self.opengl.timeline += 1
             self.draw_Model(myMotion.skeleton.root, index)
             glDisable(GL_LIGHTING)
