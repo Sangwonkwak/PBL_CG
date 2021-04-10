@@ -12,6 +12,15 @@ class Skeleton:
     def __init__(self, root=None, joint_num=0):
         self.root = root
         self.joint_num = joint_num
+        self.joint_list = []
+
+    def make_jointList(self, node, str):
+        if node.name != "__END__":
+            self.joint_list.append(str+node.name)
+            temp_str = str + "-"
+            for child in node.child:
+                self.make_jointList(child, temp_str)
+    
 
 class Posture:
     def __init__(self, origin=None, Rmatrix=[]):
@@ -20,15 +29,17 @@ class Posture:
         self.framebuffer = []
 
 class Motion:
-    def __init__(self, skeleton=None, postures=None, frames=0):
+    def __init__(self, skeleton=None, postures=None, frames=0, frame_rate=0):
         self.skeleton = skeleton
         self.postures = postures
         self.frames = frames
+        self.frame_rate = frame_rate
 
 class Parsing:
     def __init__(self):
         self.joint_num = 0
         self.frames = 0
+        self.frame_rate = 0
     
     # Make tree structure for parsing hierarchical model
     def make_tree(self, full_list, parent, line_num, channel_list):
@@ -78,10 +89,11 @@ class Parsing:
         
     def make_postures(self, full_list, start_line_num, channel_list):
         # get frames
-        temp_frame= full_list[start_line_num+1].split(' ')
-        if len(temp_frame) == 1:
-            temp_frame = full_list[start_line_num+1].split('\t')
+        temp_frame= full_list[start_line_num+1].split()
         self.frames = int(temp_frame[1])
+        temp_frame_rate = full_list[start_line_num+2].split()
+        self.frame_rate = float(temp_frame_rate[2])
+        print(self.frame_rate)
 
         line_num = start_line_num + 3
         postures = []
@@ -146,29 +158,59 @@ class Draw:
     def setOpengl(self, opengl):
         self.opengl = opengl
     
-    def drawgrid(self):
-        for i in range(21):
-            glPushMatrix()
-            glBegin(GL_LINES)
-            glColor3ub(80,80,80)
-            glVertex3fv(np.array([-1.0+0.1*i,0.,1.0]))
-            glVertex3fv(np.array([-1.0+0.1*i,0.,-1.0]))
-            glVertex3fv(np.array([1.0,0.,-1.0+0.1*i]))
-            glVertex3fv(np.array([-1.0,0.,-1.0+0.1*i]))
-            glEnd()
-            glPopMatrix()
+    def draw_unit_quad(self):
+        glPushMatrix()
+        glBegin(GL_POLYGON)
+        glVertex3fv(np.array([0.1, 0., 0.1]))
+        glVertex3fv(np.array([0.1, 0., -0.1]))
+        glVertex3fv(np.array([-0.1, 0., -0.1]))
+        glVertex3fv(np.array([-0.1, 0., 0.1]))
+        glEnd()
+        glPopMatrix()
+
     
+    def drawgrid(self):
+        glPushMatrix()
+        glColor3ub(80,80,80)
+        glTranslatef(.9, 0., .9)
+        for i in range(10):
+            glPushMatrix()
+            for j in range(5):
+                self.draw_unit_quad()
+                glTranslatef(0., 0., -0.4)
+            glPopMatrix()
+            if i % 2 == 0:
+                glTranslatef(-0.2, 0., -0.2)
+            else:
+                glTranslatef(-0.2, 0., 0.2)
+        glPopMatrix()
+
+        glPushMatrix()
+        glColor3ub(180,180,180)
+        glTranslatef(.9, 0., .7)
+        for i in range(10):
+            glPushMatrix()
+            for j in range(5):
+                self.draw_unit_quad()
+                glTranslatef(0., 0., -0.4)
+            glPopMatrix()
+            if i % 2 == 0:
+                glTranslatef(-0.2, 0., 0.2)
+            else:
+                glTranslatef(-0.2, 0., -0.2)
+        glPopMatrix()
+        
     def drawframe(self):
         glBegin(GL_LINES)
         glColor3ub(255,0,0)
-        glVertex3fv(np.array([-.1,0.,0.]))
-        glVertex3fv(np.array([.1,0.,0.]))
+        glVertex3fv(np.array([-1.,0.,0.]))
+        glVertex3fv(np.array([1.,0.,0.]))
         glColor3ub(0,255,0)
-        glVertex3fv(np.array([0.,-.1,0.]))
-        glVertex3fv(np.array([0.,.1,0.]))
+        glVertex3fv(np.array([0.,0.,0.]))
+        glVertex3fv(np.array([0.,1.,0.]))
         glColor3ub(0,0,255)
-        glVertex3fv(np.array([0.,0.,-.1]))
-        glVertex3fv(np.array([0.,0.,.1]))
+        glVertex3fv(np.array([0.,0.,-1.]))
+        glVertex3fv(np.array([0.,0.,1.]))
         glEnd()
 
     def createVertexAndIndexArrayIndexed(self):
@@ -246,6 +288,22 @@ class Draw:
         glScalef(scale_x, scale_yz, scale_yz)
         self.drawCube_glDrawElements()
         glPopMatrix()
+    
+    def draw_unit_sphere(self):
+        radius = 1.
+        maxAngle = 360
+        glPushMatrix()
+        glBegin(GL_LINE_STRIP)
+        for i in range(maxAngle):
+            glPushMatrix()
+            glRotatef(i, 0, 1, 0)
+            for j in range(maxAngle):
+                theta = np.radians(j)
+                glVertex3f(np.cos(theta)*radius, np.sin(theta)*radius, 0.)
+            glPopMatrix()
+        glEnd()
+        glPopMatrix()
+
 
     def make_framebuffer(self, node, posture, index, mat):
         if node.name != "__END__":
@@ -272,14 +330,19 @@ class Draw:
                 self.draw_Model(child, posture, index, posture.framebuffer[num])
     
     def draw_process(self, motion, timeline):
-        for i in range(-1,1):
-            posture = motion.postures[timeline + i]
-            if len(posture.framebuffer) == 0:
-                self.make_framebuffer(motion.skeleton.root, posture, [0], np.identity(4))
-        self.draw_Model(motion.skeleton.root, motion.postures[timeline], [0], np.identity(4))
+        print("timeLine: %d"%timeline)
+        if timeline != 0:
+            for i in range(-1,1):
+                posture = motion.postures[timeline + i]
+                if len(posture.framebuffer) == 0:
+                    self.make_framebuffer(motion.skeleton.root, posture, [0], np.identity(4))
+            self.draw_Model(motion.skeleton.root, motion.postures[timeline], [0], np.identity(4))
+        else:
+            posture = motion.postures[0]
+            self.make_framebuffer(motion.skeleton.root, posture, [0], np.identity(4))
+            self.draw_Model(motion.skeleton.root, motion.postures[0], [0], np.identity(4))
 
     def render(self):
-        # print("Called")
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glEnable(GL_DEPTH_TEST)
         glPolygonMode(GL_FRONT_AND_BACK,GL_FILL)
@@ -287,7 +350,7 @@ class Draw:
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         scale = self.opengl.scale
-        glOrtho(-scale,scale,-scale,scale,-1,1)
+        glOrtho(-scale,scale,-scale,scale,-scale,scale)
         
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
@@ -296,8 +359,47 @@ class Draw:
         cameraUp = self.opengl.cameraUp
         gluLookAt(real_eye[0],real_eye[1],real_eye[2],real_at[0],real_at[1],real_at[2],cameraUp[0],cameraUp[1],cameraUp[2])
         
+        glPushMatrix()
+        glScalef(200, 200, 200)
         self.drawframe()
         self.drawgrid()
+        glPopMatrix()
+
+        # glPushMatrix()
+        # glScalef(scale, scale, scale)
+        # self.drawgrid()
+        # glPopMatrix()
+
+
+        # self.draw_unit_sphere()
+
+        if self.opengl.POINT_FLAG:
+            glPushMatrix()
+            glColor3f(1.0, 0., 0.)
+            ratio = 0.1
+            glTranslatef(self.opengl.point[0], self.opengl.point[1], self.opengl.point[2])
+            glScalef(ratio, ratio, ratio)
+            # self.draw_unit_sphere()
+            self.drawCube_glDrawElements()
+            glPopMatrix()
+        
+        if self.opengl.LINE_FLAG:
+            glPushMatrix()
+            glColor3f(0., 1., 0.)
+            ratio = 0.03
+            for i in range(2):
+                glPushMatrix()
+                glTranslatef(self.opengl.line[i][0], self.opengl.line[i][1], self.opengl.line[i][2])
+                glScalef(ratio, ratio, ratio)
+                self.drawCube_glDrawElements()
+                glPopMatrix()
+                # self.draw_unit_sphere()
+            
+            glBegin(GL_LINES)
+            for i in range(2):
+                glVertex3f(self.opengl.line[i][0], self.opengl.line[i][1], self.opengl.line[i][2])
+            glEnd()
+            glPopMatrix()
         
         glPushMatrix()
         
@@ -339,42 +441,39 @@ class Draw:
         glLightfv(GL_LIGHT4,GL_DIFFUSE,lightColor2)
         glLightfv(GL_LIGHT4,GL_SPECULAR,lightColor2)
         glLightfv(GL_LIGHT4,GL_AMBIENT,ambientLightColor)
-        
-        # Object texture setting
-        objectColor = (.3, .3, .7, 1.)
-        specularObjectColor = (1.,1.,1.,1.)
-        glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
-        glMaterialfv(GL_FRONT,GL_SHININESS,100)
-        glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
-        
+    
+
         # Model drawing        
-        scale_ratio = 0.005
+        motion_scale_ratio = self.opengl.motion_scale_ratio
         if self.opengl.ENABLE_FLAG:
-            timeline = self.opengl.timeline
             motion = self.opengl.motion
             if self.opengl.timeline_changed:
-                if timeline < 0:
+                if self.opengl.timeline < 0:
                     self.opengl.timeline = 0
-                if timeline > motion.frames:
+                if self.opengl.timeline > motion.frames:
                     self.opengl.timeline = motion.frames
                 self.opengl.timeline_changed = False
             
             if self.opengl.timeline >= motion.frames:
                 self.opengl.START_FLAG = False
                 self.opengl.timeline = motion.frames
-            
-            glScalef(scale_ratio,scale_ratio,scale_ratio)
+
+            timeline = self.opengl.timeline
+            objectColor = (.3, .3, .7, 1.)
+            specularObjectColor = (1.,1.,1.,1.)
+            glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
+            glMaterialfv(GL_FRONT,GL_SHININESS,100)
+            glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
+            glScalef(motion_scale_ratio, motion_scale_ratio, motion_scale_ratio)
             if not self.opengl.START_FLAG:
                 self.draw_process(motion, timeline)
-                # print("timeline: %d"%timeline)
-                # for item in motion.postures[timeline].framebuffer:
-                #     print(item, end='')
-                # print()
+                self.highlight_joint()
                 glDisable(GL_LIGHTING)
                 glPopMatrix()
                 return
 
             self.draw_process(motion, timeline)
+            self.highlight_joint()
             self.opengl.timeline += 1
             glDisable(GL_LIGHTING)
             glPopMatrix()
@@ -383,3 +482,47 @@ class Draw:
         
         glDisable(GL_LIGHTING)
         glPopMatrix()
+    
+    # 선택된 joint 표시 및 그 linear velocity 표시
+    def highlight_joint(self):
+        if self.opengl.Is_Joint_Selected:
+            motion_scale_ratio = self.opengl.motion_scale_ratio
+            timeline = self.opengl.timeline
+            motion = self.opengl.motion
+            current_matrix = motion.postures[timeline].framebuffer[self.opengl.selected_joint]
+            
+            origin = np.array([0., 0., 0., 1.])
+            position = current_matrix @ origin
+            # for i in range(3):
+            #     position[i] *= motion_scale_ratio
+            velocity_point = None
+            if timeline == 0:
+                velocity_point = np.array([0., 0., 0., 1.])
+            elif timeline == 1:
+                next_matrix = motion.postures[timeline+1].framebuffer[self.opengl.selected_joint]
+                next_position = next_matrix @ origin
+                velocity_point = (next_position - position) / motion.frame_rate
+            else:
+                previous_matrix = motion.postures[timeline-1].framebuffer[self.opengl.selected_joint]
+                previous_position = previous_matrix @ origin
+                velocity_point = (position - previous_position) / motion.frame_rate
+
+            objectColor = (1., 1., 0., 1.)
+            specularObjectColor = (1.,1.,1.,1.)
+            glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
+            glMaterialfv(GL_FRONT,GL_SHININESS,100)
+            glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
+
+            glPushMatrix()
+            ratio = 3
+            glScalef(motion_scale_ratio, motion_scale_ratio, motion_scale_ratio)
+            glTranslatef(position[0], position[1], position[2])
+            glPushMatrix()
+            glBegin(GL_LINES)
+            glVertex3fv(np.array([0., 0., 0.]))
+            glVertex3fv(velocity_point[:-1])
+            glEnd()
+            glPopMatrix()
+            glScalef(ratio, ratio, ratio)
+            self.drawCube_glDrawElements()
+            glPopMatrix()

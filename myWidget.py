@@ -17,7 +17,8 @@ class myopenGL(QOpenGLWidget):
         self.eye = np.array([0.,0.,.1])
         self.at = np.array([0.,0.,0.])
         self.cameraUp = np.array([0.,1.,0.])
-        self.scale = 1.
+        # self.scale = 1.
+        self.scale = 220.
         self.trans = np.array([0.,0.,0.])
         self.full_list = []
         self.START_FLAG = False
@@ -26,9 +27,19 @@ class myopenGL(QOpenGLWidget):
         self.timeline = 0
         self.motion = None
         self.draw = None
+        self.POINT_FLAG = False
+        self.point = np.zeros(3)
+        self.LINE_FLAG = False
+        self.line = np.zeros((2,3))
+        self.Is_Joint_Selected = False
+        self.selected_joint = -1
+        # self.motion_scale_ratio = 0.005
+        self.motion_scale_ratio = 1.
+
 
         self.textList = []
         self.mySlider = None
+        self.scrollArea = None
         self.setAcceptDrops(True)
     
     def setDraw(self, draw):
@@ -39,6 +50,9 @@ class myopenGL(QOpenGLWidget):
     
     def setSlider(self, myslider):
         self.mySlider = myslider
+    
+    def setScroll(self, scroll):
+        self.scrollArea = scroll
         
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls():
@@ -65,14 +79,27 @@ class myopenGL(QOpenGLWidget):
         root = parsing.make_tree(self.full_list, Node(), line_num, channel_list)
         postures = parsing.make_postures(self.full_list, line_num[0], channel_list)
         skeleton = Skeleton(root, parsing.joint_num)
-        
-        # for i in range(parsing.joint_num):
-        #     print(postures[1].Rmatrix[i], end=' ')
-        # print()
+        self.motion = Motion(skeleton, postures, parsing.frames, parsing.frame_rate)
+        # scroll area 만들기
+        self.motion.skeleton.make_jointList(self.motion.skeleton.root, "")
+        widget = QWidget()
+        vbox = QVBoxLayout()
 
-        self.motion = Motion(skeleton, postures, parsing.frames)
+        def radioButton_cb():
+            self.Is_Joint_Selected = True
+            for i in range(parsing.joint_num):
+                if vbox.itemAt(i).widget().isChecked():
+                    # print(i)
+                    self.selected_joint = i
+            self.update()
         
-
+        for name in self.motion.skeleton.joint_list:
+            obj = QRadioButton(name, self.scrollArea)
+            obj.clicked.connect(radioButton_cb) 
+            vbox.addWidget(obj)
+        widget.setLayout(vbox)
+        self.scrollArea.setWidget(widget)
+        
         print("File name: %s"%(file_name))
         print("###########################################################")
         file.close()
@@ -94,21 +121,21 @@ class myopenGL(QOpenGLWidget):
         self.init_pos[1] = e.y()
 
         if button == 'LEFT':
-            print("LEFT")
+            # print("LEFT")
             self.Left_pressed = True
         elif button == 'RIGHT':
-            print("RIGHT")
+            # print("RIGHT")
             self.Right_pressed = True
     
     def mouseReleaseEvent(self, e):
         button = self.mouseButtonKind(e.button())
-        print("released")
-        print(button)
+        # print("released")
+        # print(button)
         if button == 'RIGHT':
-            print("RIGHT RELEASE")
+            # print("RIGHT RELEASE")
             self.Right_pressed = False
         elif button == 'LEFT':
-            print("LEFT RELEASE")
+            # print("LEFT RELEASE")
             self.Left_pressed = False
 
     def mouseMoveEvent(self, e):
@@ -129,9 +156,10 @@ class myopenGL(QOpenGLWidget):
                 self.cameraUp[1] = -1.
             else:
                 self.cameraUp[1] = 1.
-            self.eye[0] = 0.1 * np.cos(np.radians(self.degree2)) * np.sin(np.radians(self.degree1))
-            self.eye[1] = 0.1 * np.sin(np.radians(self.degree2))
-            self.eye[2] = 0.1 * np.cos(np.radians(self.degree2)) * np.cos(np.radians(self.degree1))
+            radius = 0.1
+            self.eye[0] = radius * np.cos(np.radians(self.degree2)) * np.sin(np.radians(self.degree1))
+            self.eye[1] = radius * np.sin(np.radians(self.degree2))
+            self.eye[2] = radius * np.cos(np.radians(self.degree2)) * np.cos(np.radians(self.degree1))
             
         elif self.Right_pressed:
             ratio = 0.0001
@@ -145,12 +173,12 @@ class myopenGL(QOpenGLWidget):
         self.update()
     
     def wheelEvent(self, e):
-        ratio = 0.03
+        ratio = 0.15
         yoffset = e.angleDelta().y() * ratio
-        if self.scale <= 0.1 and yoffset == 1:
-            self.scale = 0.1
+        if self.scale <= 1. and yoffset > 0:
+            self.scale = 1.
             return
-        self.scale -= 0.1 * yoffset
+        self.scale -= yoffset
         self.update()
     
     def paintGL(self):
@@ -158,7 +186,11 @@ class myopenGL(QOpenGLWidget):
         if self.motion != None:
             text1 = "Total frames: " + str(self.motion.frames)
             text2 = "Current frame: " + str(self.timeline)
-            text3 = "Origin: " + str(self.motion.postures[self.timeline].origin)
+            origin = np.array(self.motion.postures[self.timeline].origin)
+            for i in range(3):
+                    origin[i] *= self.motion_scale_ratio
+            text3 = "Origin: " + str(origin)
+            # text3 = "Origin: " + str(self.motion_scale_ratio * self.motion.postures[self.timeline].origin)
             self.textList[0].setText(text1)
             self.textList[1].setText(text2)
             self.textList[2].setText(text3)

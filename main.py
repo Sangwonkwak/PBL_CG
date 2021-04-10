@@ -24,7 +24,9 @@ class WindowClass(QDialog, form_class) :
         self.fminusButton.pressed.connect(self.fminus_press_cb)
         self.initButton.clicked.connect(self.init_click_cb)
         self.frameNumEdit.returnPressed.connect(self.frameNum_change_cb)
-        
+        self.pointDraw_button.clicked.connect(self.pointDraw_cb)
+        self.lineDraw_button.clicked.connect(self.lineDraw_cb)
+
     def setUi(self, draw):
         self.setupUi(self)
         self.setWindowTitle("MotionViewer")
@@ -38,6 +40,7 @@ class WindowClass(QDialog, form_class) :
         self.openGLWidget.addTextObj(self.currentFrame)
         self.openGLWidget.addTextObj(self.origin)
         self.openGLWidget.setSlider(self.timeLine)
+        self.openGLWidget.setScroll(self.jointList)
 
     def start_click_cb(self):
         self.openGLWidget.START_FLAG = not self.openGLWidget.START_FLAG
@@ -64,6 +67,18 @@ class WindowClass(QDialog, form_class) :
         self.openGLWidget.timeline = new_frame
         self.openGLWidget.update()
         self.frameNumEdit.setText("")
+    
+    def pointDraw_cb(self):
+        position = [float(self.point_x.text()), float(self.point_y.text()), float(self.point_z.text())]
+        self.openGLWidget.point = np.array(position)
+        self.openGLWidget.POINT_FLAG = True
+        self.openGLWidget.update()
+    
+    def lineDraw_cb(self):
+        position = np.array([[float(self.line_x1.text()), float(self.line_y1.text()), float(self.line_z1.text())], [float(self.line_x2.text()), float(self.line_y2.text()), float(self.line_z2.text())]])
+        self.openGLWidget.line = np.array(position)
+        self.openGLWidget.LINE_FLAG = True
+        self.openGLWidget.update()
     
 def main():
     app = QApplication(sys.argv)
