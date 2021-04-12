@@ -7,6 +7,8 @@ class Node:
         self.name = name
         self.offset = np.zeros(3)
         self.child = []
+        self.parent = None
+        self.bufferIndex = None
 
 class Skeleton:
     def __init__(self, root=None, joint_num=0):
@@ -20,8 +22,18 @@ class Skeleton:
             temp_str = str + "-"
             for child in node.child:
                 self.make_jointList(child, temp_str)
-    
 
+    def make_endEffectorList(self, node, e_list, name_list):
+        if node.name == "__END__":
+            e_list.append(node)
+            temp_str = "End_Effector#" + str(len(e_list))
+            name_list.append(temp_str)
+        
+        for child in node.child:
+            self.make_endEffectorList(child, e_list, name_list)
+        
+        return e_list, name_list
+    
 class Posture:
     def __init__(self, origin=None, Rmatrix=[]):
         self.origin = origin
@@ -42,7 +54,7 @@ class Parsing:
         self.frame_rate = 0
     
     # Make tree structure for parsing hierarchical model
-    def make_tree(self, full_list, parent, line_num, channel_list):
+    def make_tree(self, full_list, parent, line_num, channel_list, bufferIndex):
         while True:
             line = full_list[line_num[0]].lstrip().split(' ')
             if line[0] == "JOINT" or line[0] == "ROOT":
@@ -64,19 +76,24 @@ class Parsing:
                     elif channel == "ZROTATION" or channel == "Zrotation":
                         channel_list.append("Z")
 
+                new_node.parent = parent
+                new_node.bufferIndex = bufferIndex[0]
+                bufferIndex[0] += 1
+
                 if line[0] != "ROOT":
                     parent.child.append(new_node)
                 line_num[0] += 4
-                self.make_tree(full_list, new_node, line_num, channel_list)
+                self.make_tree(full_list, new_node, line_num, channel_list, bufferIndex)
             elif line[0] == "End":
                 new_node = Node("__END__")
                 # offset
                 offset_data = full_list[line_num[0]+2].lstrip().split(' ')
                 new_node.offset = np.array([float(offset_data[1]),float(offset_data[2]),float(offset_data[3])])
                 
+                new_node.parent = parent
                 parent.child.append(new_node)
                 line_num[0] += 3
-                self.make_tree(full_list, new_node, line_num, channel_list)
+                self.make_tree(full_list, new_node, line_num, channel_list, bufferIndex)
                 
             elif line[0] == '}\n':
                 line_num[0] += 1
@@ -459,6 +476,7 @@ class Draw:
                 self.opengl.timeline = motion.frames
 
             timeline = self.opengl.timeline
+
             objectColor = (.3, .3, .7, 1.)
             specularObjectColor = (1.,1.,1.,1.)
             glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
@@ -468,10 +486,17 @@ class Draw:
             if not self.opengl.START_FLAG:
                 self.draw_process(motion, timeline)
                 self.highlight_joint()
+                self.Limb_IK_Draw()
                 glDisable(GL_LIGHTING)
                 glPopMatrix()
                 return
 
+
+            objectColor = (.3, .3, .7, 1.)
+            specularObjectColor = (1.,1.,1.,1.)
+            glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
+            glMaterialfv(GL_FRONT,GL_SHININESS,100)
+            glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
             self.draw_process(motion, timeline)
             self.highlight_joint()
             self.opengl.timeline += 1
@@ -526,3 +551,280 @@ class Draw:
             glScalef(ratio, ratio, ratio)
             self.drawCube_glDrawElements()
             glPopMatrix()
+    
+    # a의 각도를 구한다.
+    def cal_angleByDot(self, a, b, c):
+        ab = b - a
+        ac = c - a
+        ab_len = self.l2norm(ab[:-1])
+        ac_len = self.l2norm(ac[:-1])
+        up = np.dot(ab,ac)
+        down = ab_len * ac_len
+        x = up / down
+        if x > 1.:
+            x = 1.
+        elif x < -1.:
+            x = -1.
+        return np.arccos(x)
+    
+    def cal_angleByLen(self, ab, bc, ac):
+        up = ab*ab + ac*ac - bc*bc
+        down = 2 * ab * ac
+        x = up / down
+        if x > 1.:
+            x = 1.
+        elif x < -1.:
+            x = -1.
+        return np.arccos(x)
+    
+    def l2norm(self, v):
+        return np.sqrt(np.dot(v, v))
+
+    def normalized(self, v):
+        l = self.l2norm(v)
+        if l == 0.:
+            return np.zeros(3)
+        return 1/l * np.array(v)
+    
+    # 3차원 rotation vector를 4차원 rotation matrix로 변환
+    def exp(self, rv):
+        M = np.identity(4) 
+        u = self.normalized(rv)
+        a = self.l2norm(rv)
+        R = np.array([[np.cos(a)+u[0]*u[0]*(1-np.cos(a)), u[0]*u[1]*(1-np.cos(a))-u[2]*np.sin(a), u[0]*u[2]*(1-np.cos(a))+u[1]*np.sin(a)],
+                    [u[1]*u[0]*(1-np.cos(a))+u[2]*np.sin(a), np.cos(a)+u[1]*u[1]*(1-np.cos(a)), u[1]*u[2]*(1-np.cos(a))-u[0]*np.sin(a)],
+                    [u[2]*u[0]*(1-np.cos(a))-u[1]*np.sin(a), u[2]*u[1]*(1-np.cos(a))+u[0]*np.sin(a), np.cos(a)+u[2]*u[2]*(1-np.cos(a))]
+                    ])
+        M[:-1, :-1] = R
+        return M
+    
+    def Limb_IK_Draw(self):
+        if self.opengl.START_FLAG:
+            return
+        
+        if self.opengl.Is_Endeffector_Selected:
+            
+            end = self.opengl.selected_endEffector
+            posture = self.opengl.motion.postures[self.opengl.timeline]
+            origin = np.array([0., 0., 0., 1.])
+
+            # get a,b,c postion
+            parent = end.parent
+            g_parent = parent.parent
+            
+            end_trans = np.identity(4)
+            end_trans[:-1, 3] = end.offset
+            
+            g_parent_frame = np.array(self.opengl.Limb_IK_framebuffer[0])
+            parent_frame = np.array(self.opengl.Limb_IK_framebuffer[1])
+
+            end_pos = parent_frame @ end_trans @ origin 
+            parent_pos = parent_frame @ origin
+            g_parent_pos = g_parent_frame @ origin
+            print("g_parent_POS: ")
+            print(g_parent_pos)
+
+            temp_mat = np.identity(4)
+            temp_mat[:-1,3] = end.offset 
+            init_end_pos = posture.framebuffer[parent.bufferIndex] @ temp_mat @ origin 
+
+            final_end_pos = np.array([0., 0., 0., 1.])
+            final_end_pos[:-1] = np.array(init_end_pos[:-1]) + self.opengl.endEffector_trans[:-1]
+            final_ac = final_end_pos - g_parent_pos
+            
+            final_ac_len = self.l2norm(final_ac[:-1])
+            ab_len = self.l2norm(parent.offset)
+            bc_len = self.l2norm(end.offset)
+
+            if ab_len + bc_len < final_ac_len:
+                print("STOP")
+                # end effector 그려내기
+                objectColor = (1., .1, .1, 1.)
+                specularObjectColor = (1.,1.,1.,1.)
+                glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
+                glMaterialfv(GL_FRONT,GL_SHININESS,100)
+                glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
+                
+                ratio = .5
+                glPushMatrix()
+                glTranslatef(init_end_pos[0],init_end_pos[1],init_end_pos[2])
+                glScalef(ratio, ratio, ratio)
+                self.drawCube_glDrawElements()
+                glPopMatrix()
+
+                glPushMatrix()
+                # glTranslatef(final_end_pos[0],final_end_pos[1],final_end_pos[2])
+                glTranslatef(end_pos[0],end_pos[1],end_pos[2])
+                glScalef(ratio, ratio, ratio)
+                self.drawCube_glDrawElements()
+                glPopMatrix()
+
+                # Link 그려내기
+                objectColor = (.8, .4, .2, 1.)
+                specularObjectColor = (1.,1.,1.,1.)
+                glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
+                glMaterialfv(GL_FRONT,GL_SHININESS,100)
+                glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
+
+                
+                glPushMatrix()
+                glMultMatrixf(g_parent_frame.T)
+                self.draw_proper_cube(parent.offset)
+                glPopMatrix()
+
+                
+                glPushMatrix()
+                glMultMatrixf(parent_frame.T)
+                self.draw_proper_cube(end.offset)
+                glPopMatrix()
+
+                self.opengl.endEffector_trans = end_pos - init_end_pos
+                return
+
+            theta_a1 = self.cal_angleByDot(g_parent_pos, parent_pos, end_pos)
+            theta_b1 = self.cal_angleByDot(parent_pos, end_pos, g_parent_pos)
+            theta_a2 = self.cal_angleByLen(ab_len, bc_len, final_ac_len)
+            theta_b2 = self.cal_angleByLen(ab_len, final_ac_len, bc_len)
+
+            ac = end_pos - g_parent_pos
+            ac_len = self.l2norm(ac[:-1])
+            ab = parent_pos - g_parent_pos
+            
+            a_rv1_axis = np.cross(ac[:-1],ab[:-1])
+            a_rv1_axis_len = self.l2norm(a_rv1_axis)
+            a_rv1_axis /= a_rv1_axis_len
+            a_rv1 = (theta_a2 - theta_a1) * a_rv1_axis
+            a_rv1_temp = np.array([0., 0., 0., 0.])
+            a_rv1_temp[:-1] = np.array(a_rv1) 
+            a_rv1 = np.linalg.inv(g_parent_frame) @ a_rv1_temp
+            a_rm1 = self.exp(a_rv1[:-1])
+            # a_rm1 = self.exp(a_rv1)
+            
+            g_parent_framebuffer1 = g_parent_frame @ a_rm1 
+            # g_parent_framebuffer1 = a_rm1 @ posture.framebuffer[g_parent.bufferIndex]
+
+            ba = g_parent_pos - parent_pos
+            bc = end_pos - parent_pos
+            b_rv1_axis = np.cross(ba[:-1], bc[:-1])
+            b_rv1_axis_len = self.l2norm(b_rv1_axis)
+            b_rv1_axis /= b_rv1_axis_len
+            b_rv1 = (theta_b2 - theta_b1) * b_rv1_axis
+            b_rv1_temp = np.array([0., 0., 0., 0.])
+            b_rv1_temp[:-1] = np.array(b_rv1)
+            b_rv1 = np.linalg.inv(parent_frame) @ b_rv1_temp
+            b_rm1 = self.exp(b_rv1[:-1])
+            # b_rm1 = self.exp(b_rv1)
+            parent_new_orientation = parent_frame @ b_rm1
+            # parent_new_orientation = b_rm1 @ posture.framebuffer[parent.bufferIndex]
+
+            parent_new_orientation[:-1,3] = np.array([0., 0., 0.])
+
+            a_rv2_axis = np.cross(final_ac[:-1],ac[:-1])
+            a_rv2_axis_len = self.l2norm(a_rv2_axis)
+            if a_rv2_axis_len != 0.:
+                a_rv2_axis /= a_rv2_axis_len
+                final_delta_theta_a = (-1) * self.cal_angleByDot(g_parent_pos, end_pos, final_end_pos)
+                a_rv2 = final_delta_theta_a * a_rv2_axis
+            else:
+                a_rv2 = np.zeros(3)
+            
+            # if final_delta_theta_a == -0.:
+            #     a_rv2 = np.zeros(3)
+            
+            a_rv2_temp = np.array([0., 0., 0., 0.])
+            a_rv2_temp[:-1] = np.array(a_rv2)
+            a_rv2 = np.linalg.inv(g_parent_framebuffer1) @ a_rv2_temp
+            a_rm2 = self.exp(a_rv2[:-1])
+            # print("final_delta_theta_a: ")
+            # print(final_delta_theta_a)
+            print("a_rv2_temp: ")
+            print(a_rv2_temp)
+            print("a_rv2: ")
+            print(a_rv2)
+            print("a_rm2: ")
+            print(a_rm2)
+            # a_rm2 = self.exp(a_rv2)
+            g_parent_framebuffer2 = g_parent_framebuffer1 @ a_rm2
+            # g_parent_framebuffer2 = a_rm2 @ g_parent_framebuffer1
+
+
+            # end effector 그려내기
+            objectColor = (1., .1, .1, 1.)
+            specularObjectColor = (1.,1.,1.,1.)
+            glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
+            glMaterialfv(GL_FRONT,GL_SHININESS,100)
+            glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
+            
+            ratio = .5
+            glPushMatrix()
+            glTranslatef(init_end_pos[0],init_end_pos[1],init_end_pos[2])
+            glScalef(ratio, ratio, ratio)
+            self.drawCube_glDrawElements()
+            glPopMatrix()
+
+            glPushMatrix()
+            glTranslatef(final_end_pos[0],final_end_pos[1],final_end_pos[2])
+            glScalef(ratio, ratio, ratio)
+            self.drawCube_glDrawElements()
+            glPopMatrix()
+
+            # Link 그려내기
+            objectColor = (.8, .4, .2, 1.)
+            specularObjectColor = (1.,1.,1.,1.)
+            glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
+            glMaterialfv(GL_FRONT,GL_SHININESS,100)
+            glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
+
+            glPushMatrix()
+            glMultMatrixf(g_parent_framebuffer2.T)
+            self.draw_proper_cube(parent.offset)
+            glPopMatrix()
+
+            temp_offset = np.identity(4)
+            temp_offset[:-1,3] = np.array(parent.offset)
+            
+            final_parent_pos = g_parent_framebuffer2 @ temp_offset @ origin
+            parent_new_framebuffer = np.array(parent_new_orientation)
+            parent_new_framebuffer[:,3] = final_parent_pos
+            
+
+            glPushMatrix()
+            glMultMatrixf(parent_new_framebuffer.T)
+            self.draw_proper_cube(end.offset)
+            glPopMatrix()
+
+            self.opengl.Limb_IK_framebuffer[0] = g_parent_framebuffer2
+            self.opengl.Limb_IK_framebuffer[1] = parent_new_framebuffer
+
+            temp = np.identity(4)
+            temp[:-1,3] = end.offset
+            test_final_pos = parent_new_framebuffer @ temp @ origin
+            print("g_parent_framebuffer1: ")
+            print(g_parent_framebuffer1)
+            print("parent_new_framebuffer: ")
+            print(parent_new_framebuffer)
+            print("g_parent_framebuffer2: ")
+            print(g_parent_framebuffer2)
+            print("final pos: ",end='')
+            print(test_final_pos)
+            print("correct final: ",end='')
+            print(final_end_pos) 
+
+
+
+
+            # # new b position을 축으로 회전
+            # parent_trans = np.identity(4)
+            # parent_trans[:-1, 3] = parent.offset
+            # new_parent_pos = g_parent_framebuffer1 @ parent_trans @ origin
+            # new_ba = g_parent_pos - new_parent_pos
+            # new_end_pos = g_parent_pos + (final_ac_len / ac_len) * ac
+            # new_bc = new_end_pos - new_parent_pos
+            # b_rv1_axis = np.cross(new_ba,new_bc)
+            # b_rv1_axis_len = np.sqrt(np.dot(b_rv1_axis,b_rv1_axis))
+            # b_rv1_axis /= b_rv1_axis_len
+            # b_rv1 = (theta_b2 - theta_b1) * b_rv1_axis
+            # b_rm1 = self.exp(b_rv1)
+            
+
+            

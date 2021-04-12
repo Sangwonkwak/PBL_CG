@@ -18,7 +18,7 @@ class myopenGL(QOpenGLWidget):
         self.at = np.array([0.,0.,0.])
         self.cameraUp = np.array([0.,1.,0.])
         # self.scale = 1.
-        self.scale = 220.
+        self.scale = 100.
         self.trans = np.array([0.,0.,0.])
         self.full_list = []
         self.START_FLAG = False
@@ -36,10 +36,15 @@ class myopenGL(QOpenGLWidget):
         # self.motion_scale_ratio = 0.005
         self.motion_scale_ratio = 1.
 
+        self.Is_Endeffector_Selected = False
+        self.selected_endEffector = None
+        self.endEffector_trans = np.array([0., 0., 0., 0.])
+        self.Limb_IK_framebuffer = []
 
         self.textList = []
         self.mySlider = None
         self.scrollArea = None
+        self.scrollArea_Endeffector = None
         self.setAcceptDrops(True)
     
     def setDraw(self, draw):
@@ -53,6 +58,9 @@ class myopenGL(QOpenGLWidget):
     
     def setScroll(self, scroll):
         self.scrollArea = scroll
+    
+    def setScroll_Endeffector(self, scroll):
+        self.scrollArea_Endeffector = scroll
         
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls():
@@ -76,11 +84,12 @@ class myopenGL(QOpenGLWidget):
         line_num = [0]
         channel_list = []
         postures = []
-        root = parsing.make_tree(self.full_list, Node(), line_num, channel_list)
+        root = parsing.make_tree(self.full_list, Node(), line_num, channel_list, [0])
         postures = parsing.make_postures(self.full_list, line_num[0], channel_list)
         skeleton = Skeleton(root, parsing.joint_num)
         self.motion = Motion(skeleton, postures, parsing.frames, parsing.frame_rate)
-        # scroll area 만들기
+
+        # Joint scroll area 만들기
         self.motion.skeleton.make_jointList(self.motion.skeleton.root, "")
         widget = QWidget()
         vbox = QVBoxLayout()
@@ -99,7 +108,22 @@ class myopenGL(QOpenGLWidget):
             vbox.addWidget(obj)
         widget.setLayout(vbox)
         self.scrollArea.setWidget(widget)
-        
+
+        # End Effector scroll area 만들기
+        end_list, end_name_list = self.motion.skeleton.make_endEffectorList(self.motion.skeleton.root, [], [])
+        widget2 = QWidget()
+        vbox2 = QVBoxLayout()
+
+        for i in range(len(end_list)):
+            name = end_name_list[i]
+            obj = MyRadioButton(name)
+            obj.setNode(end_list[i])
+            obj.setOpenGL(self)
+            obj.clicked.connect(obj.click_cb)
+            vbox2.addWidget(obj)
+        widget2.setLayout(vbox2)
+        self.scrollArea_Endeffector.setWidget(widget2)
+
         print("File name: %s"%(file_name))
         print("###########################################################")
         file.close()
@@ -112,8 +136,6 @@ class myopenGL(QOpenGLWidget):
             return 'RIGHT'
         elif button & Qt.MidButton:
             return 'MID'
-        else:
-            return 'what?'
         
     def mousePressEvent(self, e):
         button = self.mouseButtonKind(e.button())
@@ -121,21 +143,15 @@ class myopenGL(QOpenGLWidget):
         self.init_pos[1] = e.y()
 
         if button == 'LEFT':
-            # print("LEFT")
             self.Left_pressed = True
         elif button == 'RIGHT':
-            # print("RIGHT")
             self.Right_pressed = True
     
     def mouseReleaseEvent(self, e):
         button = self.mouseButtonKind(e.button())
-        # print("released")
-        # print(button)
-        if button == 'RIGHT':
-            # print("RIGHT RELEASE")
+        if button == 'RIGHT':  
             self.Right_pressed = False
         elif button == 'LEFT':
-            # print("LEFT RELEASE")
             self.Left_pressed = False
 
     def mouseMoveEvent(self, e):
@@ -156,13 +172,14 @@ class myopenGL(QOpenGLWidget):
                 self.cameraUp[1] = -1.
             else:
                 self.cameraUp[1] = 1.
-            radius = 0.1
+            # radius = 0.1
+            radius = 20
             self.eye[0] = radius * np.cos(np.radians(self.degree2)) * np.sin(np.radians(self.degree1))
             self.eye[1] = radius * np.sin(np.radians(self.degree2))
             self.eye[2] = radius * np.cos(np.radians(self.degree2)) * np.cos(np.radians(self.degree1))
             
         elif self.Right_pressed:
-            ratio = 0.0001
+            ratio = 0.01
             cameraFront = self.eye - self.at
             temp1 = np.cross(cameraFront, self.cameraUp)
             u = temp1/np.sqrt(np.dot(temp1,temp1))
@@ -196,6 +213,33 @@ class myopenGL(QOpenGLWidget):
             self.textList[2].setText(text3)
             self.mySlider.value_decision(self.timeline)
 
+class MyRadioButton(QRadioButton):
+    def __init__(self, parent=None):
+        super(MyRadioButton, self).__init__(parent)
+        self.end_node = None
+        self.opengl = None
+
+    def setNode(self, node):
+        self.end_node = node
+    
+    def setOpenGL(self, opengl):
+        self.opengl = opengl
+    
+    def click_cb(self):
+        print("click_callback")
+        self.opengl.Is_Endeffector_Selected = True
+        self.opengl.selected_endEffector = self.end_node
+        self.opengl.endEffector_trans = np.array([0., 0., 0., 0.])
+        self.opengl.Limb_IK_framebuffer = []
+        end = self.opengl.selected_endEffector
+        posture = self.opengl.motion.postures[self.opengl.timeline]
+        parent = end.parent
+        g_parent = parent.parent
+        self.opengl.Limb_IK_framebuffer.append(posture.framebuffer[g_parent.bufferIndex])
+        self.opengl.Limb_IK_framebuffer.append(posture.framebuffer[parent.bufferIndex])
+
+        self.opengl.update()
+    
 class mySlider(QSlider):
     def __init__(self, parent=None):
         super(mySlider, self).__init__(parent)

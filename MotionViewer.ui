@@ -130,7 +130,7 @@
    <property name="geometry">
     <rect>
      <x>880</x>
-     <y>40</y>
+     <y>20</y>
      <width>241</width>
      <height>131</height>
     </rect>
@@ -163,7 +163,7 @@
    <property name="geometry">
     <rect>
      <x>870</x>
-     <y>210</y>
+     <y>160</y>
      <width>261</width>
      <height>251</height>
     </rect>
@@ -200,7 +200,7 @@
    <property name="geometry">
     <rect>
      <x>870</x>
-     <y>470</y>
+     <y>420</y>
      <width>261</width>
      <height>71</height>
     </rect>
@@ -260,7 +260,7 @@
    <property name="geometry">
     <rect>
      <x>870</x>
-     <y>550</y>
+     <y>500</y>
      <width>261</width>
      <height>131</height>
     </rect>
@@ -346,6 +346,42 @@
       <property name="text">
        <string>Draw</string>
       </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QWidget" name="verticalLayoutWidget_5">
+   <property name="geometry">
+    <rect>
+     <x>870</x>
+     <y>650</y>
+     <width>261</width>
+     <height>91</height>
+    </rect>
+   </property>
+   <layout class="QVBoxLayout" name="verticalLayout_6">
+    <item>
+     <widget class="QLabel" name="label_13">
+      <property name="text">
+       <string>End Effector List</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QScrollArea" name="endEffectorList">
+      <property name="widgetResizable">
+       <bool>true</bool>
+      </property>
+      <widget class="QWidget" name="scrollAreaWidgetContents_2">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>0</y>
+         <width>257</width>
+         <height>69</height>
+        </rect>
+       </property>
+      </widget>
      </widget>
     </item>
    </layout>

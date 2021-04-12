@@ -1,14 +1,20 @@
-def func1(index):
-    index[0] += 4
-    func2(index)
+import numpy as np
 
-def func2(index):
-    print(index[0])
+def func1(lis):
+    lis.append(3)
+    print(len(lis))
+    func2(lis)
+    return lis
+
+def func2(lis):
+    lis.append(4)
+    print(len(lis))
 
 def main():
-    # func1([0])
-    for i in range(-1,1):
-        print(i)
+    arr = np.array([1,2,3])
+    aar = np.array([1.,2.,3.])
+    if np.array_equal(arr,aar):
+        print("ggod")
 
 if __name__ == "__main__":
     main()

@@ -41,6 +41,29 @@ class WindowClass(QDialog, form_class) :
         self.openGLWidget.addTextObj(self.origin)
         self.openGLWidget.setSlider(self.timeLine)
         self.openGLWidget.setScroll(self.jointList)
+        self.openGLWidget.setScroll_Endeffector(self.endEffectorList)
+
+    def keyPressEvent(self, e):
+        # Z키는 z축 -, X키는 z축 +
+        step = 1.
+        if e.key() == Qt.Key_A:
+            self.openGLWidget.endEffector_trans[0] -= step
+            self.openGLWidget.update()
+        elif e.key() == Qt.Key_D:
+            self.openGLWidget.endEffector_trans[0] += step
+            self.openGLWidget.update()
+        elif e.key() == Qt.Key_W:
+            self.openGLWidget.endEffector_trans[1] += step
+            self.openGLWidget.update()
+        elif e.key() == Qt.Key_S:
+            self.openGLWidget.endEffector_trans[1] -= step
+            self.openGLWidget.update()
+        elif e.key() == Qt.Key_Z:
+            self.openGLWidget.endEffector_trans[2] -= step
+            self.openGLWidget.update()
+        elif e.key() == Qt.Key_X:
+            self.openGLWidget.endEffector_trans[2] += step
+            self.openGLWidget.update()
 
     def start_click_cb(self):
         self.openGLWidget.START_FLAG = not self.openGLWidget.START_FLAG
