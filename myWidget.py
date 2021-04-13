@@ -40,6 +40,8 @@ class myopenGL(QOpenGLWidget):
         self.selected_endEffector = None
         self.endEffector_trans = np.array([0., 0., 0., 0.])
         self.Limb_IK_framebuffer = []
+        self.Jacobian_IK_framebuffer = []
+        self.Jacobian_nodeList = []
 
         self.textList = []
         self.mySlider = None
@@ -84,7 +86,7 @@ class myopenGL(QOpenGLWidget):
         line_num = [0]
         channel_list = []
         postures = []
-        root = parsing.make_tree(self.full_list, Node(), line_num, channel_list, [0])
+        root = parsing.make_tree(self.full_list, None, line_num, channel_list, [0])
         postures = parsing.make_postures(self.full_list, line_num[0], channel_list)
         skeleton = Skeleton(root, parsing.joint_num)
         self.motion = Motion(skeleton, postures, parsing.frames, parsing.frame_rate)
@@ -238,7 +240,24 @@ class MyRadioButton(QRadioButton):
         self.opengl.Limb_IK_framebuffer.append(posture.framebuffer[g_parent.bufferIndex])
         self.opengl.Limb_IK_framebuffer.append(posture.framebuffer[parent.bufferIndex])
 
+        temp_buffer, temp_nodeList = self.make_temp_framebuffer(end,posture,[],[])
+        self.opengl.Jacobian_IK_framebuffer = []
+        self.opengl.Jacobian_nodeList = []
+        for i in range(len(temp_buffer)-1,-1,-1):
+            self.opengl.Jacobian_IK_framebuffer.append(temp_buffer[i])
+            self.opengl.Jacobian_nodeList.append(temp_nodeList[i])
+            # print(temp_nodeList[i].name)
+
         self.opengl.update()
+    
+    def make_temp_framebuffer(self,end,posture,temp_buffer,temp_nodeList):
+        parent = end.parent
+        temp_buffer.append(posture.framebuffer[parent.bufferIndex])
+        temp_nodeList.append(parent)
+        if parent.bufferIndex == 0:
+            return 
+        self.make_temp_framebuffer(parent,posture,temp_buffer,temp_nodeList)
+        return temp_buffer, temp_nodeList
     
 class mySlider(QSlider):
     def __init__(self, parent=None):

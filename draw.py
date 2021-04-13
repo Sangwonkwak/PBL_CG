@@ -379,7 +379,7 @@ class Draw:
         glPushMatrix()
         glScalef(200, 200, 200)
         self.drawframe()
-        self.drawgrid()
+        # self.drawgrid()
         glPopMatrix()
 
         # glPushMatrix()
@@ -485,8 +485,9 @@ class Draw:
             glScalef(motion_scale_ratio, motion_scale_ratio, motion_scale_ratio)
             if not self.opengl.START_FLAG:
                 self.draw_process(motion, timeline)
-                self.highlight_joint()
-                self.Limb_IK_Draw()
+                # self.highlight_joint()
+                # self.Limb_IK_Draw()
+                self.Jacobian_IK_Draw()
                 glDisable(GL_LIGHTING)
                 glPopMatrix()
                 return
@@ -796,35 +797,157 @@ class Draw:
             self.opengl.Limb_IK_framebuffer[0] = g_parent_framebuffer2
             self.opengl.Limb_IK_framebuffer[1] = parent_new_framebuffer
 
-            temp = np.identity(4)
-            temp[:-1,3] = end.offset
-            test_final_pos = parent_new_framebuffer @ temp @ origin
-            print("g_parent_framebuffer1: ")
-            print(g_parent_framebuffer1)
-            print("parent_new_framebuffer: ")
-            print(parent_new_framebuffer)
-            print("g_parent_framebuffer2: ")
-            print(g_parent_framebuffer2)
-            print("final pos: ",end='')
-            print(test_final_pos)
-            print("correct final: ",end='')
-            print(final_end_pos) 
+            # temp = np.identity(4)
+            # temp[:-1,3] = end.offset
+            # test_final_pos = parent_new_framebuffer @ temp @ origin
+            # print("g_parent_framebuffer1: ")
+            # print(g_parent_framebuffer1)
+            # print("parent_new_framebuffer: ")
+            # print(parent_new_framebuffer)
+            # print("g_parent_framebuffer2: ")
+            # print(g_parent_framebuffer2)
+            # print("final pos: ",end='')
+            # print(test_final_pos)
+            # print("correct final: ",end='')
+            # print(final_end_pos) 
 
+    def Jacobian_IK_Draw(self):
+        if self.opengl.Is_Endeffector_Selected:
+            J_framebuffer = self.opengl.Jacobian_IK_framebuffer
+            J_nodeList = self.opengl.Jacobian_nodeList
+            end = self.opengl.selected_endEffector
+            posture = self.opengl.motion.postures[self.opengl.timeline]
+            joint_num = len(self.opengl.Jacobian_IK_framebuffer)
+            origin = np.array([0., 0., 0., 1.])
+            M = np.identity(4)
+            M[:-1,3] = end.offset
 
+            current_end_pos = J_framebuffer[joint_num-1] @ M @ origin
+            # root_origin = J_framebuffer[0][:,3]
+            init_end_pos = posture.framebuffer[end.parent.bufferIndex] @ M @ origin
+            final_end_pos = np.array([0.,0.,0.,1.])
+            # final_end_pos[:-1] = np.array(current_end_pos[:-1]) + self.opengl.endEffector_trans[:-1]
+            final_end_pos[:-1] = np.array(init_end_pos[:-1]) + self.opengl.endEffector_trans[:-1]
+            # print(self.opengl.endEffector_trans[:-1])
+            # total_difference = final_end_pos - init_end_pos
 
+            # while(True):
+            for num in range(100):
+                # current_end_pos = J_framebuffer[joint_num-1] @ M @ origin
+                J = np.zeros((3,joint_num*3))
+                # print(joint_num)
+                # Get delta_joint by Jacobian Matrix
+                for i in range(joint_num):
+                    current_joint_pos = J_framebuffer[i] @ origin
+                    another_vector = current_end_pos - current_joint_pos
+                    for j in range(3):
+                        axis_vector = np.array(J_framebuffer[i][:,j])
+                        change_vector = np.cross(axis_vector[:-1],another_vector[:-1])
+                        index = 3*i + j
+                        
+                        J[:,index] = change_vector
+                
+                total_difference = final_end_pos - current_end_pos
+                ratio = 0.01
+                delta_end = ratio * total_difference
+                delta_joint = J.T @ delta_end[:-1]
+                # print("delta_joint: ")
+                # print(delta_joint)
 
-            # # new b position을 축으로 회전
-            # parent_trans = np.identity(4)
-            # parent_trans[:-1, 3] = parent.offset
-            # new_parent_pos = g_parent_framebuffer1 @ parent_trans @ origin
-            # new_ba = g_parent_pos - new_parent_pos
-            # new_end_pos = g_parent_pos + (final_ac_len / ac_len) * ac
-            # new_bc = new_end_pos - new_parent_pos
-            # b_rv1_axis = np.cross(new_ba,new_bc)
-            # b_rv1_axis_len = np.sqrt(np.dot(b_rv1_axis,b_rv1_axis))
-            # b_rv1_axis /= b_rv1_axis_len
-            # b_rv1 = (theta_b2 - theta_b1) * b_rv1_axis
-            # b_rm1 = self.exp(b_rv1)
+                # Add delta_joint to each local frame by ZXY Euler angle(root is ZYX), update orientation 
+                for i in range(joint_num):
+                    index = 3*i
+                    x_delta = np.radians(delta_joint[index])
+                    y_delta = np.radians(delta_joint[index+1])
+                    z_delta = np.radians(delta_joint[index+2])
+                    X = np.identity(4)
+                    X[:3,:3] = [[1., 0., 0.],
+                                [0., np.cos(x_delta), -np.sin(x_delta)],
+                                [0., np.sin(x_delta), np.cos(x_delta)]
+                                ]
+                    Y = np.identity(4)
+                    Y[:3,:3] = [[np.cos(y_delta), 0., np.sin(y_delta)],
+                                [0., 1., 0.],
+                                [-np.sin(y_delta), 0., np.cos(y_delta)]
+                                ]
+                    Z = np.identity(4)
+                    Z[:3,:3] = [[np.cos(z_delta), -np.sin(z_delta), 0.],
+                                [np.sin(z_delta), np.cos(z_delta), 0.],
+                                [0., 0., 1.]
+                                ]
+                    if i != 0:
+                        R = Z @ X @ Y
+                    else:
+                        R = Z @ Y @ X
+                    J_framebuffer[i] = J_framebuffer[i] @ R
+                
+                # get each joint origin
+                for i in range(joint_num-1):
+                    child_node = J_nodeList[i+1]
+                    P = np.identity(4)
+                    P[:-1,3] = child_node.offset
+                    next_origin = J_framebuffer[i] @ P @ origin
+                    J_framebuffer[i+1][:,3] = next_origin
+                P = np.identity(4)
+                P[:-1,3] = end.offset
+                current_end_pos = J_framebuffer[joint_num-1] @ P @ origin
+                
+                # if self.Is_Close(current_end_pos, final_end_pos):
+                #     break
+                # break
+            # print("current_end_pos: ")
+            # print(current_end_pos)
+            # print("final_end_pos: ")
+            # print(final_end_pos)
             
+            # Link 그려내기
+            objectColor = (1., 1., 1., 1.)
+            specularObjectColor = (1.,1.,1.,1.)
+            glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
+            glMaterialfv(GL_FRONT,GL_SHININESS,100)
+            glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
+
+            for i in range(joint_num):
+                glPushMatrix()
+                glMultMatrixf(J_framebuffer[i].T)
+                temp_offset = None
+                if (i + 1) == joint_num:
+                    temp_offset = end.offset
+                else:
+                    temp_offset = J_nodeList[i+1].offset
+                self.draw_proper_cube(temp_offset)
+                glPopMatrix()
+            
+            # end effector 그려내기
+            objectColor = (1., .1, .1, 1.)
+            specularObjectColor = (1.,1.,1.,1.)
+            glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
+            glMaterialfv(GL_FRONT,GL_SHININESS,100)
+            glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
+            
+            ratio = .5
+            glPushMatrix()
+            glTranslatef(current_end_pos[0],current_end_pos[1],current_end_pos[2])
+            glScalef(ratio, ratio, ratio)
+            self.drawCube_glDrawElements()
+            glPopMatrix()
+
+
+    def Is_Close(self, current, final):
+        temp = final - current
+        sum = self.l2norm(temp[:-1])
+        print(sum)
+        threshold = 0.05
+        if sum < threshold:
+            return True
+        else:
+            return False
+
+                
+
+
+            
+
+
 
             
