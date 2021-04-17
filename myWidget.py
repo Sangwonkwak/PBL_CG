@@ -14,7 +14,7 @@ class myopenGL(QOpenGLWidget):
         self.degree1 = 0.
         self.degree2 = 0.
         self.init_pos = np.array([0,0])
-        self.eye = np.array([0.,0.,.1])
+        self.eye = np.array([0.,0.,1.])
         self.at = np.array([0.,0.,0.])
         self.cameraUp = np.array([0.,1.,0.])
         # self.scale = 1.
@@ -31,17 +31,22 @@ class myopenGL(QOpenGLWidget):
         self.point = np.zeros(3)
         self.LINE_FLAG = False
         self.line = np.zeros((2,3))
+        
+        self.fk_first_check = False
         self.Is_Joint_Selected = False
         self.selected_joint = -1
-        # self.motion_scale_ratio = 0.005
         self.motion_scale_ratio = 1.
+        self.current_joint_pos = None
 
+        self.Limb_IK_first_check = False
+        self.Jacobian_IK_first_check = False
         self.Is_Endeffector_Selected = False
         self.selected_endEffector = None
         self.endEffector_trans = np.array([0., 0., 0., 0.])
         self.Limb_IK_framebuffer = []
         self.Jacobian_IK_framebuffer = []
         self.Jacobian_nodeList = []
+        self.Jacobian_Is_drawn_nodeList = None
 
         self.textList = []
         self.mySlider = None
@@ -174,8 +179,8 @@ class myopenGL(QOpenGLWidget):
                 self.cameraUp[1] = -1.
             else:
                 self.cameraUp[1] = 1.
-            # radius = 0.1
-            radius = 20
+            radius = 1.
+            # radius = self.scale * 0.1
             self.eye[0] = radius * np.cos(np.radians(self.degree2)) * np.sin(np.radians(self.degree1))
             self.eye[1] = radius * np.sin(np.radians(self.degree2))
             self.eye[2] = radius * np.cos(np.radians(self.degree2)) * np.cos(np.radians(self.degree1))
@@ -194,10 +199,16 @@ class myopenGL(QOpenGLWidget):
     def wheelEvent(self, e):
         ratio = 0.15
         yoffset = e.angleDelta().y() * ratio
+        # print(yoffset)
         if self.scale <= 1. and yoffset > 0:
             self.scale = 1.
             return
         self.scale -= yoffset
+        # v = self.at - self.eye
+        # v_len = np.sqrt(np.dot(v,v))
+        # v /= v_len
+        # self.eye += v * yoffset * 0.1
+        # print(self.eye)
         self.update()
     
     def paintGL(self):
@@ -209,10 +220,11 @@ class myopenGL(QOpenGLWidget):
             for i in range(3):
                     origin[i] *= self.motion_scale_ratio
             text3 = "Origin: " + str(origin)
-            # text3 = "Origin: " + str(self.motion_scale_ratio * self.motion.postures[self.timeline].origin)
+            text4 = "Current Joint: " + str(self.current_joint_pos)
             self.textList[0].setText(text1)
             self.textList[1].setText(text2)
             self.textList[2].setText(text3)
+            self.textList[3].setText(text4)
             self.mySlider.value_decision(self.timeline)
 
 class MyRadioButton(QRadioButton):
@@ -243,19 +255,24 @@ class MyRadioButton(QRadioButton):
         temp_buffer, temp_nodeList = self.make_temp_framebuffer(end,posture,[],[])
         self.opengl.Jacobian_IK_framebuffer = []
         self.opengl.Jacobian_nodeList = []
+        self.opengl.Jacobian_Is_drawn_nodeList = np.zeros(100)
         for i in range(len(temp_buffer)-1,-1,-1):
             self.opengl.Jacobian_IK_framebuffer.append(temp_buffer[i])
             self.opengl.Jacobian_nodeList.append(temp_nodeList[i])
-            # print(temp_nodeList[i].name)
+            self.opengl.Jacobian_Is_drawn_nodeList[temp_nodeList[i].bufferIndex] = 1
+            print(temp_nodeList[i].name)
 
         self.opengl.update()
     
     def make_temp_framebuffer(self,end,posture,temp_buffer,temp_nodeList):
         parent = end.parent
-        temp_buffer.append(posture.framebuffer[parent.bufferIndex])
-        temp_nodeList.append(parent)
+        # root 빼주기
         if parent.bufferIndex == 0:
             return 
+        temp_buffer.append(posture.framebuffer[parent.bufferIndex])
+        temp_nodeList.append(parent)
+        # if parent.bufferIndex == 0:
+        #     return 
         self.make_temp_framebuffer(parent,posture,temp_buffer,temp_nodeList)
         return temp_buffer, temp_nodeList
     

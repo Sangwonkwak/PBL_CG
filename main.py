@@ -26,7 +26,31 @@ class WindowClass(QDialog, form_class) :
         self.frameNumEdit.returnPressed.connect(self.frameNum_change_cb)
         self.pointDraw_button.clicked.connect(self.pointDraw_cb)
         self.lineDraw_button.clicked.connect(self.lineDraw_cb)
+        self.FK_Checkbox.stateChanged.connect(self.FK_Checkbox_cb)
+        self.Limb_IK_Checkbox.stateChanged.connect(self.Limb_IK_Checkbox_cb)
+        self.Jacobian_IK_Checkbox.stateChanged.connect(self.Jacobian_IK_Checkbox_cb)
 
+    def FK_Checkbox_cb(self):
+        if self.FK_Checkbox.isChecked():
+            self.openGLWidget.fk_first_check = True
+        else:
+            self.openGLWidget.fk_first_check = False
+        self.openGLWidget.update()
+
+    def Limb_IK_Checkbox_cb(self):
+        if self.Limb_IK_Checkbox.isChecked():
+            self.openGLWidget.Limb_IK_first_check = True
+        else:
+            self.openGLWidget.Limb_IK_first_check = False
+        self.openGLWidget.update()
+
+    def Jacobian_IK_Checkbox_cb(self):
+        if self.Jacobian_IK_Checkbox.isChecked():
+            self.openGLWidget.Jacobian_IK_first_check = True
+        else:
+            self.openGLWidget.Jacobian_IK_first_check = False
+        self.openGLWidget.update()
+        
     def setUi(self, draw):
         self.setupUi(self)
         self.setWindowTitle("MotionViewer")
@@ -39,13 +63,15 @@ class WindowClass(QDialog, form_class) :
         self.openGLWidget.addTextObj(self.totalFrame)
         self.openGLWidget.addTextObj(self.currentFrame)
         self.openGLWidget.addTextObj(self.origin)
+        self.openGLWidget.addTextObj(self.jointLabel)
+        self.jointLabel.setStyleSheet("background-color: #f89b00;")
         self.openGLWidget.setSlider(self.timeLine)
         self.openGLWidget.setScroll(self.jointList)
         self.openGLWidget.setScroll_Endeffector(self.endEffectorList)
 
     def keyPressEvent(self, e):
         # Z키는 z축 -, X키는 z축 +
-        step = 1.
+        step = 1.5 * 2
         if e.key() == Qt.Key_A:
             self.openGLWidget.endEffector_trans[0] -= step
             self.openGLWidget.update()

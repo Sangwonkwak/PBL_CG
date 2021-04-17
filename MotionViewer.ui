@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1170</width>
-    <height>752</height>
+    <width>1199</width>
+    <height>757</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,19 +16,19 @@
   <widget class="myopenGL" name="openGLWidget">
    <property name="geometry">
     <rect>
-     <x>100</x>
-     <y>20</y>
-     <width>741</width>
-     <height>431</height>
+     <x>20</x>
+     <y>10</y>
+     <width>811</width>
+     <height>481</height>
     </rect>
    </property>
   </widget>
   <widget class="QFrame" name="frame">
    <property name="geometry">
     <rect>
-     <x>100</x>
-     <y>470</y>
-     <width>741</width>
+     <x>30</x>
+     <y>510</y>
+     <width>771</width>
      <height>121</height>
     </rect>
    </property>
@@ -116,9 +116,9 @@
   <widget class="mySlider" name="timeLine">
    <property name="geometry">
     <rect>
-     <x>180</x>
-     <y>620</y>
-     <width>581</width>
+     <x>80</x>
+     <y>650</y>
+     <width>651</width>
      <height>31</height>
     </rect>
    </property>
@@ -129,9 +129,9 @@
   <widget class="QWidget" name="verticalLayoutWidget">
    <property name="geometry">
     <rect>
-     <x>880</x>
+     <x>870</x>
      <y>20</y>
-     <width>241</width>
+     <width>271</width>
      <height>131</height>
     </rect>
    </property>
@@ -159,232 +159,282 @@
     </item>
    </layout>
   </widget>
-  <widget class="QWidget" name="verticalLayoutWidget_2">
+  <widget class="QTabWidget" name="tabWidget">
    <property name="geometry">
     <rect>
      <x>870</x>
-     <y>160</y>
-     <width>261</width>
-     <height>251</height>
+     <y>170</y>
+     <width>277</width>
+     <height>296</height>
     </rect>
    </property>
-   <layout class="QVBoxLayout" name="verticalLayout_3">
-    <item>
-     <widget class="QLabel" name="jointLabel">
-      <property name="text">
-       <string>Joint List</string>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <widget class="QScrollArea" name="jointList">
-      <property name="widgetResizable">
-       <bool>true</bool>
-      </property>
-      <widget class="QWidget" name="scrollAreaWidgetContents">
-       <property name="geometry">
-        <rect>
-         <x>0</x>
-         <y>0</y>
-         <width>257</width>
-         <height>229</height>
-        </rect>
-       </property>
-       <layout class="QVBoxLayout" name="verticalLayout_2"/>
-      </widget>
-     </widget>
-    </item>
-   </layout>
-  </widget>
-  <widget class="QWidget" name="verticalLayoutWidget_3">
-   <property name="geometry">
-    <rect>
-     <x>870</x>
-     <y>420</y>
-     <width>261</width>
-     <height>71</height>
-    </rect>
+   <property name="currentIndex">
+    <number>0</number>
    </property>
-   <layout class="QVBoxLayout" name="verticalLayout_4">
-    <item>
-     <widget class="QLabel" name="label_2">
-      <property name="text">
-       <string>Point Draw</string>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_2">
+   <widget class="QWidget" name="tab">
+    <attribute name="title">
+     <string>Joint List</string>
+    </attribute>
+    <widget class="QWidget" name="verticalLayoutWidget_2">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>271</width>
+       <height>271</height>
+      </rect>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_3">
       <item>
-       <widget class="QLabel" name="label_4">
+       <widget class="QLabel" name="jointLabel">
         <property name="text">
-         <string>X:</string>
+         <string>Current joint position:</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="point_x"/>
-      </item>
-      <item>
-       <widget class="QLabel" name="label_3">
+       <widget class="QCheckBox" name="FK_Checkbox">
         <property name="text">
-         <string>Y:</string>
+         <string>Postion, Linear velocity</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="point_y"/>
-      </item>
-      <item>
-       <widget class="QLabel" name="label_5">
-        <property name="text">
-         <string>Z:</string>
+       <widget class="QScrollArea" name="jointList">
+        <property name="widgetResizable">
+         <bool>true</bool>
         </property>
+        <widget class="QWidget" name="scrollAreaWidgetContents">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>0</y>
+           <width>267</width>
+           <height>227</height>
+          </rect>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_2"/>
+        </widget>
        </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="point_z"/>
       </item>
      </layout>
-    </item>
-    <item>
-     <widget class="QPushButton" name="pointDraw_button">
-      <property name="text">
-       <string>Draw</string>
-      </property>
-     </widget>
-    </item>
-   </layout>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="tab_2">
+    <attribute name="title">
+     <string>End Effector List</string>
+    </attribute>
+    <widget class="QWidget" name="verticalLayoutWidget_5">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>271</width>
+       <height>271</height>
+      </rect>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_6">
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_6">
+        <item>
+         <widget class="QCheckBox" name="Limb_IK_Checkbox">
+          <property name="text">
+           <string>Limb_IK</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="Jacobian_IK_Checkbox">
+          <property name="text">
+           <string>Jacobian_IK</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QScrollArea" name="endEffectorList">
+        <property name="widgetResizable">
+         <bool>true</bool>
+        </property>
+        <widget class="QWidget" name="scrollAreaWidgetContents_2">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>0</y>
+           <width>267</width>
+           <height>243</height>
+          </rect>
+         </property>
+        </widget>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </widget>
   </widget>
-  <widget class="QWidget" name="verticalLayoutWidget_4">
+  <widget class="QTabWidget" name="tabWidget_2">
    <property name="geometry">
     <rect>
      <x>870</x>
-     <y>500</y>
-     <width>261</width>
-     <height>131</height>
+     <y>480</y>
+     <width>291</width>
+     <height>181</height>
     </rect>
    </property>
-   <layout class="QVBoxLayout" name="verticalLayout_5">
-    <item>
-     <widget class="QLabel" name="label_6">
-      <property name="text">
-       <string>Line Draw</string>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_3">
-      <item>
-       <widget class="QLabel" name="label_7">
-        <property name="text">
-         <string>X1:</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="line_x1"/>
-      </item>
-      <item>
-       <widget class="QLabel" name="label_8">
-        <property name="text">
-         <string>Y1:</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="line_y1"/>
-      </item>
-      <item>
-       <widget class="QLabel" name="label_9">
-        <property name="text">
-         <string>Z1:</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="line_z1"/>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_4">
-      <item>
-       <widget class="QLabel" name="label_10">
-        <property name="text">
-         <string>X2:</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="line_x2"/>
-      </item>
-      <item>
-       <widget class="QLabel" name="label_11">
-        <property name="text">
-         <string>Y2:</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="line_y2"/>
-      </item>
-      <item>
-       <widget class="QLabel" name="label_12">
-        <property name="text">
-         <string>Z2:</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="line_z2"/>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <widget class="QPushButton" name="lineDraw_button">
-      <property name="text">
-       <string>Draw</string>
-      </property>
-     </widget>
-    </item>
-   </layout>
-  </widget>
-  <widget class="QWidget" name="verticalLayoutWidget_5">
-   <property name="geometry">
-    <rect>
-     <x>870</x>
-     <y>650</y>
-     <width>261</width>
-     <height>91</height>
-    </rect>
+   <property name="currentIndex">
+    <number>0</number>
    </property>
-   <layout class="QVBoxLayout" name="verticalLayout_6">
-    <item>
-     <widget class="QLabel" name="label_13">
-      <property name="text">
-       <string>End Effector List</string>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <widget class="QScrollArea" name="endEffectorList">
-      <property name="widgetResizable">
-       <bool>true</bool>
-      </property>
-      <widget class="QWidget" name="scrollAreaWidgetContents_2">
-       <property name="geometry">
-        <rect>
-         <x>0</x>
-         <y>0</y>
-         <width>257</width>
-         <height>69</height>
-        </rect>
-       </property>
-      </widget>
-     </widget>
-    </item>
-   </layout>
+   <widget class="QWidget" name="tab_3">
+    <attribute name="title">
+     <string>Point</string>
+    </attribute>
+    <widget class="QWidget" name="verticalLayoutWidget_3">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>281</width>
+       <height>151</height>
+      </rect>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_4">
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <item>
+         <widget class="QLabel" name="label_4">
+          <property name="text">
+           <string>X:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="point_x"/>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_3">
+          <property name="text">
+           <string>Y:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="point_y"/>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_5">
+          <property name="text">
+           <string>Z:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="point_z"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QPushButton" name="pointDraw_button">
+        <property name="text">
+         <string>Draw</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="tab_4">
+    <attribute name="title">
+     <string>Line</string>
+    </attribute>
+    <widget class="QWidget" name="verticalLayoutWidget_4">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>281</width>
+       <height>151</height>
+      </rect>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_5">
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QLabel" name="label_7">
+          <property name="text">
+           <string>X1:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="line_x1"/>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_8">
+          <property name="text">
+           <string>Y1:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="line_y1"/>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_9">
+          <property name="text">
+           <string>Z1:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="line_z1"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_4">
+        <item>
+         <widget class="QLabel" name="label_10">
+          <property name="text">
+           <string>X2:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="line_x2"/>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_11">
+          <property name="text">
+           <string>Y2:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="line_y2"/>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_12">
+          <property name="text">
+           <string>Z2:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="line_z2"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QPushButton" name="lineDraw_button">
+        <property name="text">
+         <string>Draw</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </widget>
   </widget>
  </widget>
  <customwidgets>

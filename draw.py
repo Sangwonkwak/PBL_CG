@@ -393,7 +393,7 @@ class Draw:
         if self.opengl.POINT_FLAG:
             glPushMatrix()
             glColor3f(1.0, 0., 0.)
-            ratio = 0.1
+            ratio = 5.
             glTranslatef(self.opengl.point[0], self.opengl.point[1], self.opengl.point[2])
             glScalef(ratio, ratio, ratio)
             # self.draw_unit_sphere()
@@ -403,7 +403,7 @@ class Draw:
         if self.opengl.LINE_FLAG:
             glPushMatrix()
             glColor3f(0., 1., 0.)
-            ratio = 0.03
+            ratio = 5.
             for i in range(2):
                 glPushMatrix()
                 glTranslatef(self.opengl.line[i][0], self.opengl.line[i][1], self.opengl.line[i][2])
@@ -485,13 +485,12 @@ class Draw:
             glScalef(motion_scale_ratio, motion_scale_ratio, motion_scale_ratio)
             if not self.opengl.START_FLAG:
                 self.draw_process(motion, timeline)
-                # self.highlight_joint()
-                # self.Limb_IK_Draw()
+                self.highlight_joint()
+                self.Limb_IK_Draw()
                 self.Jacobian_IK_Draw()
                 glDisable(GL_LIGHTING)
                 glPopMatrix()
                 return
-
 
             objectColor = (.3, .3, .7, 1.)
             specularObjectColor = (1.,1.,1.,1.)
@@ -511,6 +510,8 @@ class Draw:
     
     # 선택된 joint 표시 및 그 linear velocity 표시
     def highlight_joint(self):
+        if not self.opengl.fk_first_check:
+            return 
         if self.opengl.Is_Joint_Selected:
             motion_scale_ratio = self.opengl.motion_scale_ratio
             timeline = self.opengl.timeline
@@ -519,6 +520,7 @@ class Draw:
             
             origin = np.array([0., 0., 0., 1.])
             position = current_matrix @ origin
+            self.opengl.current_joint_pos = np.array(position[:-1])
             # for i in range(3):
             #     position[i] *= motion_scale_ratio
             velocity_point = None
@@ -600,7 +602,7 @@ class Draw:
         return M
     
     def Limb_IK_Draw(self):
-        if self.opengl.START_FLAG:
+        if not self.opengl.Limb_IK_first_check:
             return
         
         if self.opengl.Is_Endeffector_Selected:
@@ -637,7 +639,8 @@ class Draw:
             ab_len = self.l2norm(parent.offset)
             bc_len = self.l2norm(end.offset)
 
-            if ab_len + bc_len < final_ac_len:
+            if False:
+            # if ab_len + bc_len < final_ac_len:
                 print("STOP")
                 # end effector 그려내기
                 objectColor = (1., .1, .1, 1.)
@@ -797,45 +800,33 @@ class Draw:
             self.opengl.Limb_IK_framebuffer[0] = g_parent_framebuffer2
             self.opengl.Limb_IK_framebuffer[1] = parent_new_framebuffer
 
-            # temp = np.identity(4)
-            # temp[:-1,3] = end.offset
-            # test_final_pos = parent_new_framebuffer @ temp @ origin
-            # print("g_parent_framebuffer1: ")
-            # print(g_parent_framebuffer1)
-            # print("parent_new_framebuffer: ")
-            # print(parent_new_framebuffer)
-            # print("g_parent_framebuffer2: ")
-            # print(g_parent_framebuffer2)
-            # print("final pos: ",end='')
-            # print(test_final_pos)
-            # print("correct final: ",end='')
-            # print(final_end_pos) 
 
     def Jacobian_IK_Draw(self):
+        if not self.opengl.Jacobian_IK_first_check:
+            return
+            
         if self.opengl.Is_Endeffector_Selected:
             J_framebuffer = self.opengl.Jacobian_IK_framebuffer
             J_nodeList = self.opengl.Jacobian_nodeList
             end = self.opengl.selected_endEffector
-            posture = self.opengl.motion.postures[self.opengl.timeline]
+            motion = self.opengl.motion
+            posture = motion.postures[self.opengl.timeline]
             joint_num = len(self.opengl.Jacobian_IK_framebuffer)
             origin = np.array([0., 0., 0., 1.])
             M = np.identity(4)
             M[:-1,3] = end.offset
 
             current_end_pos = J_framebuffer[joint_num-1] @ M @ origin
-            # root_origin = J_framebuffer[0][:,3]
+            
             init_end_pos = posture.framebuffer[end.parent.bufferIndex] @ M @ origin
             final_end_pos = np.array([0.,0.,0.,1.])
-            # final_end_pos[:-1] = np.array(current_end_pos[:-1]) + self.opengl.endEffector_trans[:-1]
             final_end_pos[:-1] = np.array(init_end_pos[:-1]) + self.opengl.endEffector_trans[:-1]
-            # print(self.opengl.endEffector_trans[:-1])
-            # total_difference = final_end_pos - init_end_pos
-
-            # while(True):
+            
+            delta_joint = None
             for num in range(100):
                 # current_end_pos = J_framebuffer[joint_num-1] @ M @ origin
                 J = np.zeros((3,joint_num*3))
-                # print(joint_num)
+                
                 # Get delta_joint by Jacobian Matrix
                 for i in range(joint_num):
                     current_joint_pos = J_framebuffer[i] @ origin
@@ -844,15 +835,12 @@ class Draw:
                         axis_vector = np.array(J_framebuffer[i][:,j])
                         change_vector = np.cross(axis_vector[:-1],another_vector[:-1])
                         index = 3*i + j
-                        
                         J[:,index] = change_vector
                 
                 total_difference = final_end_pos - current_end_pos
                 ratio = 0.01
                 delta_end = ratio * total_difference
                 delta_joint = J.T @ delta_end[:-1]
-                # print("delta_joint: ")
-                # print(delta_joint)
 
                 # Add delta_joint to each local frame by ZXY Euler angle(root is ZYX), update orientation 
                 for i in range(joint_num):
@@ -875,6 +863,7 @@ class Draw:
                                 [np.sin(z_delta), np.cos(z_delta), 0.],
                                 [0., 0., 1.]
                                 ]
+                    R = None
                     if i != 0:
                         R = Z @ X @ Y
                     else:
@@ -899,7 +888,8 @@ class Draw:
             # print(current_end_pos)
             # print("final_end_pos: ")
             # print(final_end_pos)
-            
+            print("delta_joint:")
+            print(delta_joint)
             # Link 그려내기
             objectColor = (1., 1., 1., 1.)
             specularObjectColor = (1.,1.,1.,1.)
@@ -907,16 +897,29 @@ class Draw:
             glMaterialfv(GL_FRONT,GL_SHININESS,100)
             glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
 
-            for i in range(joint_num):
-                glPushMatrix()
-                glMultMatrixf(J_framebuffer[i].T)
-                temp_offset = None
-                if (i + 1) == joint_num:
-                    temp_offset = end.offset
-                else:
-                    temp_offset = J_nodeList[i+1].offset
-                self.draw_proper_cube(temp_offset)
-                glPopMatrix()
+            # for i in range(joint_num):
+            #     glPushMatrix()
+            #     glMultMatrixf(J_framebuffer[i].T)
+            #     temp_offset = None
+            #     if (i + 1) == joint_num:
+            #         temp_offset = end.offset
+            #     else:
+            #         temp_offset = J_nodeList[i+1].offset
+            #     self.draw_proper_cube(temp_offset)
+            #     glPopMatrix()
+            
+            
+            # all joint draw
+            J_posture = Posture()
+            for item in posture.Rmatrix:
+                J_posture.Rmatrix.append(np.array(item))
+            J_posture.framebuffer = [None] * (motion.skeleton.joint_num)
+            node = J_nodeList[0]
+            self.make_framebuffer_v2(node, J_posture, [node.bufferIndex,0], J_framebuffer)
+            self.draw_Model_v2(node, J_posture, [0])
+
+
+
             
             # end effector 그려내기
             objectColor = (1., .1, .1, 1.)
@@ -942,6 +945,39 @@ class Draw:
             return True
         else:
             return False
+    
+    def make_framebuffer_v2(self, node, posture, index, J_framebuffer):
+        if node.name == "__END__":
+            return
+        if self.opengl.Jacobian_Is_drawn_nodeList[index[0]] == 1:
+            posture.framebuffer[index[0]] = np.array(J_framebuffer[index[1]])
+            index[1] += 1
+        else:
+            M = posture.framebuffer[node.parent.bufferIndex]
+            N = np.array(posture.Rmatrix[node.bufferIndex])
+            N[:-1,3] = node.offset    
+            posture.framebuffer[index[0]] = M @ N
+        index[0] += 1
+        for child in node.child:
+            self.make_framebuffer_v2(child,posture,index,J_framebuffer)
+    
+    def draw_Model_v2(self, node, posture, index):
+        if index[0] != 0:
+            glPushMatrix()
+            # mat = None
+            # if node.bufferIndex == 0:
+            #     mat = np.identity(4)
+            # else:
+            #     mat = posture.framebuffer[node.parent.bufferIndex]
+            mat = posture.framebuffer[node.parent.bufferIndex]
+            glMultMatrixf(mat.T)
+            self.draw_proper_cube(node.offset)
+            glPopMatrix()
+        
+        if node.name != "__END__":
+            index[0] += 1
+            for child in node.child:
+                self.draw_Model_v2(child, posture, index)
 
                 
 
