@@ -44,6 +44,7 @@ class myopenGL(QOpenGLWidget):
         self.selected_endEffector = None
         self.endEffector_trans = np.array([0., 0., 0., 0.])
         self.Limb_IK_framebuffer = []
+        self.Limb_Is_drawn_nodeList = None
         self.Jacobian_IK_framebuffer = []
         self.Jacobian_nodeList = []
         self.Jacobian_Is_drawn_nodeList = None
@@ -93,11 +94,13 @@ class myopenGL(QOpenGLWidget):
         postures = []
         root = parsing.make_tree(self.full_list, None, line_num, channel_list, [0])
         postures = parsing.make_postures(self.full_list, line_num[0], channel_list)
-        skeleton = Skeleton(root, parsing.joint_num)
+        skeleton = Skeleton(parsing.joint_num, parsing.total_joint_num, list(parsing.jointList), root)
         self.motion = Motion(skeleton, postures, parsing.frames, parsing.frame_rate)
 
+        self.motion.skeleton.makeJointList_FK(self.motion.skeleton.root, "")
+        self.motion.skeleton.makeJointList_IK(self.motion.skeleton.root, "")
         # Joint scroll area 만들기
-        self.motion.skeleton.make_jointList(self.motion.skeleton.root, "")
+        # self.motion.skeleton.make_jointList(self.motion.skeleton.root, "")
         widget = QWidget()
         vbox = QVBoxLayout()
 
@@ -109,7 +112,7 @@ class myopenGL(QOpenGLWidget):
                     self.selected_joint = i
             self.update()
         
-        for name in self.motion.skeleton.joint_list:
+        for name in self.motion.skeleton.jointListStr_FK:
             obj = QRadioButton(name, self.scrollArea)
             obj.clicked.connect(radioButton_cb) 
             vbox.addWidget(obj)
@@ -117,7 +120,9 @@ class myopenGL(QOpenGLWidget):
         self.scrollArea.setWidget(widget)
 
         # End Effector scroll area 만들기
-        end_list, end_name_list = self.motion.skeleton.make_endEffectorList(self.motion.skeleton.root, [], [])
+        # end_list, end_name_list = self.motion.skeleton.make_endEffectorList(self.motion.skeleton.root, [], [])
+        end_list = self.motion.skeleton.jointList
+        end_name_list = self.motion.skeleton.jointListStr_IK
         widget2 = QWidget()
         vbox2 = QVBoxLayout()
 
@@ -249,13 +254,19 @@ class MyRadioButton(QRadioButton):
         posture = self.opengl.motion.postures[self.opengl.timeline]
         parent = end.parent
         g_parent = parent.parent
+        joint_num = self.opengl.motion.skeleton.joint_num
+
         self.opengl.Limb_IK_framebuffer.append(posture.framebuffer[g_parent.bufferIndex])
         self.opengl.Limb_IK_framebuffer.append(posture.framebuffer[parent.bufferIndex])
+        self.opengl.Limb_Is_drawn_nodeList = np.zeros(joint_num)
+        # self.opengl.Limb_Is_drawn_nodeList[end.bufferIndex] = 1
+        self.opengl.Limb_Is_drawn_nodeList[parent.bufferIndex] = 1
+        self.opengl.Limb_Is_drawn_nodeList[g_parent.bufferIndex] = 1
 
         temp_buffer, temp_nodeList = self.make_temp_framebuffer(end,posture,[],[])
         self.opengl.Jacobian_IK_framebuffer = []
         self.opengl.Jacobian_nodeList = []
-        self.opengl.Jacobian_Is_drawn_nodeList = np.zeros(100)
+        self.opengl.Jacobian_Is_drawn_nodeList = np.zeros(joint_num)
         for i in range(len(temp_buffer)-1,-1,-1):
             self.opengl.Jacobian_IK_framebuffer.append(temp_buffer[i])
             self.opengl.Jacobian_nodeList.append(temp_nodeList[i])
@@ -271,8 +282,6 @@ class MyRadioButton(QRadioButton):
             return 
         temp_buffer.append(posture.framebuffer[parent.bufferIndex])
         temp_nodeList.append(parent)
-        # if parent.bufferIndex == 0:
-        #     return 
         self.make_temp_framebuffer(parent,posture,temp_buffer,temp_nodeList)
         return temp_buffer, temp_nodeList
     

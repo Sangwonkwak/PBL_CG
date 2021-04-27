@@ -11,28 +11,48 @@ class Node:
         self.bufferIndex = None
 
 class Skeleton:
-    def __init__(self, root=None, joint_num=0):
+    # def __init__(self, root=None, joint_num=0):
+    #     self.root = root
+    #     self.joint_num = joint_num
+    #     self.joint_list = []
+    def __init__(self, joint_num, total_joint_num, jointList, root):
         self.root = root
         self.joint_num = joint_num
-        self.joint_list = []
+        self.total_joint_num = total_joint_num
+        self.jointListStr_FK = []
+        self.jointListStr_IK = []
+        self.jointList = jointList
 
-    def make_jointList(self, node, str):
+    def makeJointList_FK(self, node, str=None):
         if node.name != "__END__":
-            self.joint_list.append(str+node.name)
+            self.jointListStr_FK.append(str+node.name)
             temp_str = str + "-"
             for child in node.child:
-                self.make_jointList(child, temp_str)
-
-    def make_endEffectorList(self, node, e_list, name_list):
-        if node.name == "__END__":
-            e_list.append(node)
-            temp_str = "End_Effector#" + str(len(e_list))
-            name_list.append(temp_str)
-        
+                self.makeJointList_FK(child, temp_str)
+    
+    def makeJointList_IK(self, node, str=None):
+        self.jointListStr_IK.append(str+node.name)
+        temp_str = str + "-"
         for child in node.child:
-            self.make_endEffectorList(child, e_list, name_list)
+            self.makeJointList_IK(child, temp_str)
+
+    # def make_jointList(self, node, str):
+    #     if node.name != "__END__":
+    #         self.joint_list.append(str+node.name)
+    #         temp_str = str + "-"
+    #         for child in node.child:
+    #             self.make_jointList(child, temp_str)
+
+    # def make_endEffectorList(self, node, e_list, name_list):
+    #     if node.name == "__END__":
+    #         e_list.append(node)
+    #         temp_str = "End_Effector#" + str(len(e_list))
+    #         name_list.append(temp_str)
         
-        return e_list, name_list
+    #     for child in node.child:
+    #         self.make_endEffectorList(child, e_list, name_list)
+        
+    #     return e_list, name_list
     
 class Posture:
     def __init__(self, origin=None, Rmatrix=[]):
@@ -50,6 +70,8 @@ class Motion:
 class Parsing:
     def __init__(self):
         self.joint_num = 0
+        self.total_joint_num = 0
+        self.jointList = []
         self.frames = 0
         self.frame_rate = 0
     
@@ -59,6 +81,7 @@ class Parsing:
             line = full_list[line_num[0]].lstrip().split(' ')
             if line[0] == "JOINT" or line[0] == "ROOT":
                 self.joint_num += 1
+                self.total_joint_num += 1
                 new_node = Node(line[1].rstrip('\n'))
                 # offset
                 offset_data = full_list[line_num[0]+2].lstrip().split(' ')
@@ -83,8 +106,11 @@ class Parsing:
                 if line[0] != "ROOT":
                     parent.child.append(new_node)
                 line_num[0] += 4
+
+                self.jointList.append(new_node)
                 self.make_tree(full_list, new_node, line_num, channel_list, bufferIndex)
             elif line[0] == "End":
+                self.total_joint_num += 1
                 new_node = Node("__END__")
                 # offset
                 offset_data = full_list[line_num[0]+2].lstrip().split(' ')
@@ -93,6 +119,8 @@ class Parsing:
                 new_node.parent = parent
                 parent.child.append(new_node)
                 line_num[0] += 3
+
+                self.jointList.append(new_node)
                 self.make_tree(full_list, new_node, line_num, channel_list, bufferIndex)
                 
             elif line[0] == '}\n':
@@ -606,9 +634,9 @@ class Draw:
             return
         
         if self.opengl.Is_Endeffector_Selected:
-            
+            motion = self.opengl.motion
             end = self.opengl.selected_endEffector
-            posture = self.opengl.motion.postures[self.opengl.timeline]
+            posture = motion.postures[self.opengl.timeline]
             origin = np.array([0., 0., 0., 1.])
 
             # get a,b,c postion
@@ -751,6 +779,34 @@ class Draw:
             g_parent_framebuffer2 = g_parent_framebuffer1 @ a_rm2
             # g_parent_framebuffer2 = a_rm2 @ g_parent_framebuffer1
 
+            # Link 그려내기
+            objectColor = (.8, .4, .2, 1.)
+            specularObjectColor = (1.,1.,1.,1.)
+            glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
+            glMaterialfv(GL_FRONT,GL_SHININESS,100)
+            glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
+
+
+            temp_offset = np.identity(4)
+            temp_offset[:-1,3] = np.array(parent.offset)
+            final_parent_pos = g_parent_framebuffer2 @ temp_offset @ origin
+            parent_new_framebuffer = np.array(parent_new_orientation)
+            parent_new_framebuffer[:,3] = final_parent_pos
+
+            L_posture = Posture()
+            for item in posture.Rmatrix:
+                L_posture.Rmatrix.append(np.array(item))
+            L_posture.framebuffer = [None] * (motion.skeleton.joint_num)
+            node = g_parent
+            L_framebuffer = [g_parent_framebuffer2, parent_new_framebuffer]
+            # temp_M = np.array(posture.framebuffer[end.bufferIndex])
+            temp_N = np.identity(4)
+            temp_N[:-1,3] = end.offset
+            calculated_end_pos = parent_new_framebuffer @ temp_N @ origin
+            # temp_M[:,3] = calculated_end_pos
+            # L_framebuffer[2] = temp_M
+            self.make_framebuffer_v2(node, L_posture, [node.bufferIndex,0], L_framebuffer, self.opengl.Limb_Is_drawn_nodeList)
+            self.draw_Model_v2(node, L_posture, [0])
 
             # end effector 그려내기
             objectColor = (1., .1, .1, 1.)
@@ -767,35 +823,31 @@ class Draw:
             glPopMatrix()
 
             glPushMatrix()
+            glTranslatef(calculated_end_pos[0], calculated_end_pos[1], calculated_end_pos[2])
+            glScalef(ratio, ratio, ratio)
+            self.drawCube_glDrawElements()
+            glPopMatrix()
+
+            objectColor = (1., .6, .4, 1.)
+            specularObjectColor = (1.,1.,1.,1.)
+            glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
+            glMaterialfv(GL_FRONT,GL_SHININESS,100)
+            glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
+            glPushMatrix()
             glTranslatef(final_end_pos[0],final_end_pos[1],final_end_pos[2])
             glScalef(ratio, ratio, ratio)
             self.drawCube_glDrawElements()
             glPopMatrix()
 
-            # Link 그려내기
-            objectColor = (.8, .4, .2, 1.)
-            specularObjectColor = (1.,1.,1.,1.)
-            glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
-            glMaterialfv(GL_FRONT,GL_SHININESS,100)
-            glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
-
-            glPushMatrix()
-            glMultMatrixf(g_parent_framebuffer2.T)
-            self.draw_proper_cube(parent.offset)
-            glPopMatrix()
-
-            temp_offset = np.identity(4)
-            temp_offset[:-1,3] = np.array(parent.offset)
+            # glPushMatrix()
+            # glMultMatrixf(g_parent_framebuffer2.T)
+            # self.draw_proper_cube(parent.offset)
+            # glPopMatrix()
             
-            final_parent_pos = g_parent_framebuffer2 @ temp_offset @ origin
-            parent_new_framebuffer = np.array(parent_new_orientation)
-            parent_new_framebuffer[:,3] = final_parent_pos
-            
-
-            glPushMatrix()
-            glMultMatrixf(parent_new_framebuffer.T)
-            self.draw_proper_cube(end.offset)
-            glPopMatrix()
+            # glPushMatrix()
+            # glMultMatrixf(parent_new_framebuffer.T)
+            # self.draw_proper_cube(end.offset)
+            # glPopMatrix()
 
             self.opengl.Limb_IK_framebuffer[0] = g_parent_framebuffer2
             self.opengl.Limb_IK_framebuffer[1] = parent_new_framebuffer
@@ -888,8 +940,8 @@ class Draw:
             # print(current_end_pos)
             # print("final_end_pos: ")
             # print(final_end_pos)
-            print("delta_joint:")
-            print(delta_joint)
+            # print("delta_joint:")
+            # print(delta_joint)
             # Link 그려내기
             objectColor = (1., 1., 1., 1.)
             specularObjectColor = (1.,1.,1.,1.)
@@ -915,12 +967,9 @@ class Draw:
                 J_posture.Rmatrix.append(np.array(item))
             J_posture.framebuffer = [None] * (motion.skeleton.joint_num)
             node = J_nodeList[0]
-            self.make_framebuffer_v2(node, J_posture, [node.bufferIndex,0], J_framebuffer)
+            self.make_framebuffer_v2(node, J_posture, [node.bufferIndex,0], J_framebuffer, self.opengl.Jacobian_Is_drawn_nodeList)
             self.draw_Model_v2(node, J_posture, [0])
 
-
-
-            
             # end effector 그려내기
             objectColor = (1., .1, .1, 1.)
             specularObjectColor = (1.,1.,1.,1.)
@@ -946,10 +995,10 @@ class Draw:
         else:
             return False
     
-    def make_framebuffer_v2(self, node, posture, index, J_framebuffer):
+    def make_framebuffer_v2(self, node, posture, index, J_framebuffer, Is_drawn_nodeList):
         if node.name == "__END__":
             return
-        if self.opengl.Jacobian_Is_drawn_nodeList[index[0]] == 1:
+        if Is_drawn_nodeList[index[0]] == 1:
             posture.framebuffer[index[0]] = np.array(J_framebuffer[index[1]])
             index[1] += 1
         else:
@@ -959,7 +1008,7 @@ class Draw:
             posture.framebuffer[index[0]] = M @ N
         index[0] += 1
         for child in node.child:
-            self.make_framebuffer_v2(child,posture,index,J_framebuffer)
+            self.make_framebuffer_v2(child,posture,index,J_framebuffer, Is_drawn_nodeList)
     
     def draw_Model_v2(self, node, posture, index):
         if index[0] != 0:
