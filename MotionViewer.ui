@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>1199</width>
-    <height>757</height>
+    <height>806</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
-  <widget class="myopenGL" name="openGLWidget">
+  <widget class="MyOpenGL" name="openGLWidget">
    <property name="geometry">
     <rect>
      <x>20</x>
@@ -113,7 +113,7 @@
     </layout>
    </widget>
   </widget>
-  <widget class="mySlider" name="timeLine">
+  <widget class="MySlider" name="timeLine">
    <property name="geometry">
     <rect>
      <x>80</x>
@@ -137,21 +137,21 @@
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="QLabel" name="totalFrame">
+     <widget class="TotalFrameLabel" name="totalFrame">
       <property name="text">
        <string>Total frames:</string>
       </property>
      </widget>
     </item>
     <item>
-     <widget class="QLabel" name="currentFrame">
+     <widget class="CurrentFrameLabel" name="currentFrame">
       <property name="text">
        <string>Current frame:</string>
       </property>
      </widget>
     </item>
     <item>
-     <widget class="QLabel" name="origin">
+     <widget class="OriginPosLabel" name="origin">
       <property name="text">
        <string>Origin: </string>
       </property>
@@ -186,7 +186,7 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_3">
       <item>
-       <widget class="QLabel" name="jointLabel">
+       <widget class="JointPosLabel" name="jointLabel">
         <property name="text">
          <string>Current joint position:</string>
         </property>
@@ -439,13 +439,33 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>mySlider</class>
+   <class>MyOpenGL</class>
+   <extends>QOpenGLWidget</extends>
+   <header>myWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>MySlider</class>
    <extends>QSlider</extends>
    <header>myWidget.h</header>
   </customwidget>
   <customwidget>
-   <class>myopenGL</class>
-   <extends>QOpenGLWidget</extends>
+   <class>TotalFrameLabel</class>
+   <extends>QLabel</extends>
+   <header>myWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>CurrentFrameLabel</class>
+   <extends>QLabel</extends>
+   <header>myWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>OriginPosLabel</class>
+   <extends>QLabel</extends>
+   <header>myWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>JointPosLabel</class>
+   <extends>QLabel</extends>
    <header>myWidget.h</header>
   </customwidget>
  </customwidgets>

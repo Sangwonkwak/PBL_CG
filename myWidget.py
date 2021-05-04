@@ -1,75 +1,33 @@
-import sys
+# import sys
 from PyQt5.QtWidgets import *
-from PyQt5 import uic
+# from PyQt5 import uic
 from PyQt5.QtCore import Qt
 
 import numpy as np
 from draw import *
+from view import *
 
-class myopenGL(QOpenGLWidget):
+class MyOpenGL(QOpenGLWidget):
     def __init__(self, parent=None):
-        super(myopenGL, self).__init__(parent)
-        self.Left_pressed = False
-        self.Right_pressed = False
-        self.degree1 = 0.
-        self.degree2 = 0.
-        self.init_pos = np.array([0,0])
-        self.eye = np.array([0.,0.,1.])
-        self.at = np.array([0.,0.,0.])
-        self.cameraUp = np.array([0.,1.,0.])
-        # self.scale = 1.
-        self.scale = 100.
-        self.trans = np.array([0.,0.,0.])
-        self.full_list = []
-        self.START_FLAG = False
-        self.ENABLE_FLAG = False
-        self.timeline_changed = False
-        self.timeline = 0
-        self.motion = None
-        self.draw = None
-        self.POINT_FLAG = False
-        self.point = np.zeros(3)
-        self.LINE_FLAG = False
-        self.line = np.zeros((2,3))
-        
-        self.fk_first_check = False
-        self.Is_Joint_Selected = False
-        self.selected_joint = -1
-        self.motion_scale_ratio = 1.
-        self.current_joint_pos = None
-
-        self.Limb_IK_first_check = False
-        self.Jacobian_IK_first_check = False
-        self.Is_Endeffector_Selected = False
-        self.selected_endEffector = None
-        self.endEffector_trans = np.array([0., 0., 0., 0.])
-        self.Limb_IK_framebuffer = []
-        self.Limb_Is_drawn_nodeList = None
-        self.Jacobian_IK_framebuffer = []
-        self.Jacobian_nodeList = []
-        self.Jacobian_Is_drawn_nodeList = None
-
-        self.textList = []
-        self.mySlider = None
-        self.scrollArea = None
-        self.scrollArea_Endeffector = None
+        super(MyOpenGL, self).__init__(parent)
         self.setAcceptDrops(True)
+        self.sliderView = None
+        self.labelView = []
+        self.mainWindowView = None
+        self.presenter = None
+
+    def setPresenter(self, presenter):
+        self.presenter = presenter
+
+    def setMainWindowView(self, window):
+        self.mainWindowView = window
+
+    def setSlider(self, slider):
+        self.sliderView = slider
     
-    def setDraw(self, draw):
-        self.draw = draw
-    
-    def addTextObj(self, text):
-        self.textList.append(text)
-    
-    def setSlider(self, myslider):
-        self.mySlider = myslider
-    
-    def setScroll(self, scroll):
-        self.scrollArea = scroll
-    
-    def setScroll_Endeffector(self, scroll):
-        self.scrollArea_Endeffector = scroll
-        
+    def addLabel(self, label):
+        self.labelView.append(label)
+
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls():
             e.accept()
@@ -78,68 +36,7 @@ class myopenGL(QOpenGLWidget):
 
     def dropEvent(self, e):
         file_path = [unicode(u.toLocalFile()) for u in e.mimeData().urls()]
-        self.ENABLE_FLAG = True
-        self.START_FLAG = False
-        self.timeline_changed = True
-        self.timeline = 0
-        file_name = ''.join(file_path)
-        file = open(file_name,'r')
-        
-        # Make "motion" object
-        parsing = Parsing()
-        self.full_list = file.readlines()
-        
-        line_num = [0]
-        channel_list = []
-        postures = []
-        root = parsing.make_tree(self.full_list, None, line_num, channel_list, [0])
-        postures = parsing.make_postures(self.full_list, line_num[0], channel_list)
-        skeleton = Skeleton(parsing.joint_num, parsing.total_joint_num, list(parsing.jointList), root)
-        self.motion = Motion(skeleton, postures, parsing.frames, parsing.frame_rate)
-
-        self.motion.skeleton.makeJointList_FK(self.motion.skeleton.root, "")
-        self.motion.skeleton.makeJointList_IK(self.motion.skeleton.root, "")
-        # Joint scroll area 만들기
-        # self.motion.skeleton.make_jointList(self.motion.skeleton.root, "")
-        widget = QWidget()
-        vbox = QVBoxLayout()
-
-        def radioButton_cb():
-            self.Is_Joint_Selected = True
-            for i in range(parsing.joint_num):
-                if vbox.itemAt(i).widget().isChecked():
-                    # print(i)
-                    self.selected_joint = i
-            self.update()
-        
-        for name in self.motion.skeleton.jointListStr_FK:
-            obj = QRadioButton(name, self.scrollArea)
-            obj.clicked.connect(radioButton_cb) 
-            vbox.addWidget(obj)
-        widget.setLayout(vbox)
-        self.scrollArea.setWidget(widget)
-
-        # End Effector scroll area 만들기
-        # end_list, end_name_list = self.motion.skeleton.make_endEffectorList(self.motion.skeleton.root, [], [])
-        end_list = self.motion.skeleton.jointList
-        end_name_list = self.motion.skeleton.jointListStr_IK
-        widget2 = QWidget()
-        vbox2 = QVBoxLayout()
-
-        for i in range(len(end_list)):
-            name = end_name_list[i]
-            obj = MyRadioButton(name)
-            obj.setNode(end_list[i])
-            obj.setOpenGL(self)
-            obj.clicked.connect(obj.click_cb)
-            vbox2.addWidget(obj)
-        widget2.setLayout(vbox2)
-        self.scrollArea_Endeffector.setWidget(widget2)
-
-        print("File name: %s"%(file_name))
-        print("###########################################################")
-        file.close()
-        self.update()
+        self.presenter.dropCB(file_path)
 
     def mouseButtonKind(self, button):
         if button & Qt.LeftButton:
@@ -150,150 +47,85 @@ class myopenGL(QOpenGLWidget):
             return 'MID'
         
     def mousePressEvent(self, e):
+        
         button = self.mouseButtonKind(e.button())
-        self.init_pos[0] = e.x()
-        self.init_pos[1] = e.y()
-
-        if button == 'LEFT':
-            self.Left_pressed = True
-        elif button == 'RIGHT':
-            self.Right_pressed = True
+        self.presenter.mousePressCB([e.x(),e.y()], button)
     
     def mouseReleaseEvent(self, e):
         button = self.mouseButtonKind(e.button())
-        if button == 'RIGHT':  
-            self.Right_pressed = False
-        elif button == 'LEFT':
-            self.Left_pressed = False
+        self.presenter.mouseReleaseCB(button)
 
     def mouseMoveEvent(self, e):
-        xpos = e.x()
-        ypos = e.y()
-        if self.Left_pressed:
-            ratio = 0.02
-            self.degree1 += (self.init_pos[0] - xpos) * ratio
-            self.degree2 += (-self.init_pos[1] + ypos) * ratio
-            if self.degree2 >= 0.:
-                self.degree2 %= 360.
-            else:
-                self.degree2 %= -360.
-            
-            if 90. <= self.degree2 and self.degree2 <= 270.:
-                self.cameraUp[1] = -1.
-            elif -90. >= self.degree2 and self.degree2 >= -270.:
-                self.cameraUp[1] = -1.
-            else:
-                self.cameraUp[1] = 1.
-            radius = 1.
-            # radius = self.scale * 0.1
-            self.eye[0] = radius * np.cos(np.radians(self.degree2)) * np.sin(np.radians(self.degree1))
-            self.eye[1] = radius * np.sin(np.radians(self.degree2))
-            self.eye[2] = radius * np.cos(np.radians(self.degree2)) * np.cos(np.radians(self.degree1))
-            
-        elif self.Right_pressed:
-            ratio = 0.01
-            cameraFront = self.eye - self.at
-            temp1 = np.cross(cameraFront, self.cameraUp)
-            u = temp1/np.sqrt(np.dot(temp1,temp1))
-            temp2 = np.cross(u,cameraFront)
-            w = temp2/np.sqrt(np.dot(temp2,temp2))
-            self.trans += u *(-self.init_pos[0]+xpos)*ratio
-            self.trans += w *(-self.init_pos[1]+ypos)*ratio
-        self.update()
+        
+        self.presenter.mouseMoveCB([e.x(),e.y()])
     
     def wheelEvent(self, e):
-        ratio = 0.15
-        yoffset = e.angleDelta().y() * ratio
-        # print(yoffset)
-        if self.scale <= 1. and yoffset > 0:
-            self.scale = 1.
-            return
-        self.scale -= yoffset
-        # v = self.at - self.eye
-        # v_len = np.sqrt(np.dot(v,v))
-        # v /= v_len
-        # self.eye += v * yoffset * 0.1
-        # print(self.eye)
-        self.update()
+        self.presenter.wheelCB(e.angleDelta().y())
     
     def paintGL(self):
-        self.draw.render()
-        if self.motion != None:
-            text1 = "Total frames: " + str(self.motion.frames)
-            text2 = "Current frame: " + str(self.timeline)
-            origin = np.array(self.motion.postures[self.timeline].origin)
-            for i in range(3):
-                    origin[i] *= self.motion_scale_ratio
-            text3 = "Origin: " + str(origin)
-            text4 = "Current Joint: " + str(self.current_joint_pos)
-            self.textList[0].setText(text1)
-            self.textList[1].setText(text2)
-            self.textList[2].setText(text3)
-            self.textList[3].setText(text4)
-            self.mySlider.value_decision(self.timeline)
+        # print("4.paintGL")
+        self.presenter.paintCB()
+        if not self.presenter.IsMotionEmpty():
+            for item in self.labelView:
+                item.viewUpdate()
+            self.sliderView.viewUpdate()
+    
+    def viewUpdate(self):
+        # print("3.openglViewUpdate")
+        self.update()
+        # if self.presenter.IsKeepGoing():
+        #     self.viewUpdate
+        # print("3.5.dasd")
+        # if not self.presenter.IsMotionEmpty():
+        #     for item in self.labelView:
+        #         item.viewUpdate()
+        #     self.sliderView.viewUpdate()
+        
 
-class MyRadioButton(QRadioButton):
+class FK_RadioButton(QRadioButton):
+    def __init__(self, name, index):
+        super(FK_RadioButton, self).__init__(name)
+        # super().__init__()
+        self.index = index
+        self.clicked.connect(self.clickEvent)
+
+    def setPresenter(self, presenter):
+        self.presenter = presenter
+
+    # def mousePressEvent(self, e):
+    #     print(self.text())
+    #     self.presenter.FKPressCB(self.index)
+
+    def clickEvent(self):
+        # print("1.clickEvent")
+        self.presenter.FKPressCB(self.index)
+
+class IK_RadioButton(QRadioButton):
+    def __init__(self, name, joint):
+        super(IK_RadioButton, self).__init__(name)
+        # super().__init__()
+        self.joint = joint
+        self.clicked.connect(self.clickEvent)
+
+    def setPresenter(self, presenter):
+        self.presenter = presenter
+
+    # def mousePressEvent(self, e):
+    #     print(self.text())
+    #     self.presenter.IKPressCB(self.joint)
+    
+    def clickEvent(self):
+        self.presenter.IKPressCB(self.joint)
+     
+class MySlider(QSlider):
     def __init__(self, parent=None):
-        super(MyRadioButton, self).__init__(parent)
-        self.end_node = None
-        self.opengl = None
+        super(MySlider, self).__init__(parent)
+        # super().__init__()
+        self.bar_len = self.maximum() - self.minimum()
+    
+    def setPresenter(self, presenter):
+        self.presenter = presenter
 
-    def setNode(self, node):
-        self.end_node = node
-    
-    def setOpenGL(self, opengl):
-        self.opengl = opengl
-    
-    def click_cb(self):
-        print("click_callback")
-        self.opengl.Is_Endeffector_Selected = True
-        self.opengl.selected_endEffector = self.end_node
-        self.opengl.endEffector_trans = np.array([0., 0., 0., 0.])
-        self.opengl.Limb_IK_framebuffer = []
-        end = self.opengl.selected_endEffector
-        posture = self.opengl.motion.postures[self.opengl.timeline]
-        parent = end.parent
-        g_parent = parent.parent
-        joint_num = self.opengl.motion.skeleton.joint_num
-
-        self.opengl.Limb_IK_framebuffer.append(posture.framebuffer[g_parent.bufferIndex])
-        self.opengl.Limb_IK_framebuffer.append(posture.framebuffer[parent.bufferIndex])
-        self.opengl.Limb_Is_drawn_nodeList = np.zeros(joint_num)
-        # self.opengl.Limb_Is_drawn_nodeList[end.bufferIndex] = 1
-        self.opengl.Limb_Is_drawn_nodeList[parent.bufferIndex] = 1
-        self.opengl.Limb_Is_drawn_nodeList[g_parent.bufferIndex] = 1
-
-        temp_buffer, temp_nodeList = self.make_temp_framebuffer(end,posture,[],[])
-        self.opengl.Jacobian_IK_framebuffer = []
-        self.opengl.Jacobian_nodeList = []
-        self.opengl.Jacobian_Is_drawn_nodeList = np.zeros(joint_num)
-        for i in range(len(temp_buffer)-1,-1,-1):
-            self.opengl.Jacobian_IK_framebuffer.append(temp_buffer[i])
-            self.opengl.Jacobian_nodeList.append(temp_nodeList[i])
-            self.opengl.Jacobian_Is_drawn_nodeList[temp_nodeList[i].bufferIndex] = 1
-            print(temp_nodeList[i].name)
-
-        self.opengl.update()
-    
-    def make_temp_framebuffer(self,end,posture,temp_buffer,temp_nodeList):
-        parent = end.parent
-        # root 빼주기
-        if parent.bufferIndex == 0:
-            return 
-        temp_buffer.append(posture.framebuffer[parent.bufferIndex])
-        temp_nodeList.append(parent)
-        self.make_temp_framebuffer(parent,posture,temp_buffer,temp_nodeList)
-        return temp_buffer, temp_nodeList
-    
-class mySlider(QSlider):
-    def __init__(self, parent=None):
-        super(mySlider, self).__init__(parent)
-        self.myopengl = None
-        self._is_drag = False
-    
-    def setOpenGL(self, myopengl):
-        self.myopengl = myopengl
-    
     def mouseButtonKind(self, buttons):
         if buttons & Qt.LeftButton:
             return 'LEFT'
@@ -302,43 +134,77 @@ class mySlider(QSlider):
         elif buttons & Qt.MidButton:
             return 'MID'
     
-    def value_decision(self, frame):
-        bar_len = self.maximum() - self.minimum()
-        self.setValue(bar_len * frame / self.myopengl.motion.frames)
+    def viewUpdate(self):
+        frame = self.presenter.getCurrentFrame()
+        frames = self.presenter.getTotalFrames()
+        self.setValue(self.bar_len * frame / frames)
     
-    def frame_decision(self, x):
+    def frameDecision(self, x):
         value = (self.maximum() - self.minimum()) * x / self.width() + self.minimum()
         if value < self.minimum():
             value = self.minimum()
         elif value > self.maximum():
             value = self.maximum()
-        bar_len = self.maximum() - self.minimum()
-        self.myopengl.timeline = int(self.myopengl.motion.frames * value / bar_len)
         self.setValue(int(value))
-        self.myopengl.update()
+        self.presenter.frameDecision(value, self.bar_len)
     
     def mousePressEvent(self, e):
         button = self.mouseButtonKind(e.buttons())
         if button == 'LEFT':
             e.accept()
             x = e.pos().x()
-            self.frame_decision(x)
+            self.frameDecision(x)
         
     def mouseMoveEvent(self, e):
         button = self.mouseButtonKind(e.buttons())
         if button == 'LEFT':
             e.accept()
             x = e.pos().x()
-            self.frame_decision(x)
-            
-            if not self._is_drag:
-                self._is_drag = True
+            self.frameDecision(x)
 
-    def mouseReleaseEvent(self, e):
-        button = self.mouseButtonKind(e.buttons())
-        if button == 'LEFT' and self._is_drag:
-            e.accept()
-            self._is_drag = False
+class TotalFrameLabel(QLabel):
+    def __init__(self,parent=None):
+        super(TotalFrameLabel,self).__init__(parent)
+
+    def setPresenter(self, presenter):
+        self.presenter = presenter
+
+    def viewUpdate(self):
+        text = "Total frames: " + str(self.presenter.getTotalFrames())
+        self.setText(text)
+
+class CurrentFrameLabel(QLabel):
+    def __init__(self,parent=None):
+        super(CurrentFrameLabel, self).__init__(parent)
+
+    def setPresenter(self, presenter):
+        self.presenter = presenter
+
+    def viewUpdate(self):
+        text = "Current frame: " + str(self.presenter.getTimeLine())
+        self.setText(text)
+
+class OriginPosLabel(QLabel):
+    def __init__(self,parent=None):
+        super(OriginPosLabel,self).__init__(parent)
+
+    def setPresenter(self, presenter):
+        self.presenter = presenter
+
+    def viewUpdate(self):
+        text = "Origin: " + str(self.presenter.getOriginPos())
+        self.setText(text)
+
+class JointPosLabel(QLabel):
+    def __init__(self,parent=None):
+        super(JointPosLabel,self).__init__(parent)
+
+    def setPresenter(self, presenter):
+        self.presenter = presenter
+
+    def viewUpdate(self):
+        text = "Current Joint: " + str(self.presenter.getJointPos())
+        self.setText(text)
 
 # class myEdit(QTextEdit):
 #     def __init__(self, parent=None):

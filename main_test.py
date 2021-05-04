@@ -1,72 +1,57 @@
-import numpy as np
+# import matplotlib.pyplot as plt
+# from mpl_toolkits.mplot3d import Axes3D
+# import numpy as np
+# import matplotlib.animation as animation
 
-def l2norm(v):
-        return np.sqrt(np.dot(v, v))
+# # plt.plot([1,2,3,4])
 
-def normalized(v):
-        l = l2norm(v)
-        if l == 0.:
-            return np.zeros(3)
-        return 1/l * np.array(v)
+# xmin = 0.
+# xmax = 25.
+# ymin = 0.
+# ymax = 25.
+# zmin = 0.
+# zmax = 25.
 
-def cal_angleByDot(a, b, c):
-        ab = b - a
-        ac = c - a
-        ab_len = l2norm(ab[:-1])
-        ac_len = l2norm(ac[:-1])
-        up = np.dot(ab,ac)
-        down = ab_len * ac_len
-        x = up / down
-        if x > 1.:
-            x = 1.
-        elif x < -1.:
-            x = -1.
-        return np.arccos(x)
+# def update_point(frame, data, point, line):
+#     print(frame)
+#     point.set_data(data[0,:frame],data[1,:frame])
+#     point.set_3d_properties(data[2,:frame])
+#     line.set_data(data[0,:frame],data[1,:frame])
+#     line.set_3d_properties(data[2,:frame])
 
-def exp(rv):
-        M = np.identity(4) 
-        u = normalized(rv)
-        a = l2norm(rv)
-        R = np.array([[np.cos(a)+u[0]*u[0]*(1-np.cos(a)), u[0]*u[1]*(1-np.cos(a))-u[2]*np.sin(a), u[0]*u[2]*(1-np.cos(a))+u[1]*np.sin(a)],
-                    [u[1]*u[0]*(1-np.cos(a))+u[2]*np.sin(a), np.cos(a)+u[1]*u[1]*(1-np.cos(a)), u[1]*u[2]*(1-np.cos(a))-u[0]*np.sin(a)],
-                    [u[2]*u[0]*(1-np.cos(a))-u[1]*np.sin(a), u[2]*u[1]*(1-np.cos(a))+u[0]*np.sin(a), np.cos(a)+u[2]*u[2]*(1-np.cos(a))]
-                    ])
-        M[:-1, :-1] = R
-        return M
+# fig = plt.figure()
+# ax = fig.add_subplot(111, projection='3d')
+# ax.set_xlabel('X')
+# ax.set_xlim3d([xmin, xmax])
+# ax.set_ylabel('Y')
+# ax.set_ylim3d([ymin, ymax])
+# ax.set_zlabel('Z')
+# ax.set_zlim3d([zmin, zmax])
+# ax.set_title('MotionViewer')
 
-def main():
-    # local_frame = np.array([[2,7,5,3],[3,8,2,3],[1,9,1,1],[0,0,0,1]])
-    # a = np.array([3, 3, 1, 1.])
-    # b = np.array([2, 5, 6, 1.])
-    # c = np.array([7, -1, 1, 1.])
-    # ###1st method
-    # ab = b - a
-    # ac = c - a
-    # a_rv = np.cross(ab[:-1],ac[:-1])
-    # a_rv_len = l2norm(a_rv)
-    # theta = cal_angleByDot(a, b, c)
-    # a_rv /= a_rv_len
-    # a_rv *= theta
+# data = np.empty((3,25))
+# for i in range(25):
+#     v = i * 1
+#     data[:,i] = np.array([v,v,v])
+
+
+# point = ax.plot([],[],[],'bo')[0]
+# line = ax.plot([],[],[],'r-')[0]
+# line2 = ax.plot([1,2],[1,2],[1,2],'g-')[0]
+# line3 = ax.plot([3,4],[3,4],[3,4],'r-')[0]
+# # point_ani = animation.FuncAnimation(fig, update_point, frames=25, fargs=(data,point,line),interval=50,blit=False)
+# plt.show()
+
+class Test:
+    def __init__(self):
+        self.a = 1
+        self.b = 2
+        self.c = 3
     
-    # a_rv_temp = np.zeros(4)
-    # a_rv_temp[:-1] = a_rv
-    # a_rv1 = np.linalg.inv(local_frame) @ a_rv_temp
-    # a_rm1 = exp(a_rv1[:-1])
-    # frame1 = local_frame @ a_rm1
+    # def __init__(self):
+    #     self = self
 
-    # ###2nd method
-    # a_rm2 = exp(a_rv)
-    # frame2 = a_rm2 @ local_frame
-
-    # print(frame1)
-    # print(frame2)
-    # for i in range(9,-1,-1):
-    #     print(i)
-    # arr1 = np.array([1,2,3,4])
-    # arr2 = arr1
-    # arr2[0] = 123
-    arr1 = np.identity(4)
-    print(arr1)
-
-if __name__ == "__main__":
-    main()
+test = Test()
+print(test)
+test1 = Test(test)
+print(test1)
