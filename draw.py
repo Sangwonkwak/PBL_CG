@@ -16,6 +16,12 @@ class Draw:
     def setMotion(self, motion):
         self.motion = motion
     
+    def setTimeWarpingMotion(self, motion):
+        self.timeWarpingMotion = motion
+
+    def setMotionWarpingMotion(self, motion):
+        self.motionWarpingMotion = motion
+
     def draw_unit_quad(self):
         glPushMatrix()
         glBegin(GL_POLYGON)
@@ -174,7 +180,7 @@ class Draw:
         if node.name != "__END__":
             for child in node.child:
                 self.drawModel(child, posture)
-
+            
     def render(self):
        
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -186,6 +192,7 @@ class Draw:
         data = self.opengl_data
         scale = data.scale
         glOrtho(-scale,scale,-scale,scale,-scale,scale)
+        # gluPerspective(45, 1, 1, 10)
         
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
@@ -199,12 +206,6 @@ class Draw:
         self.drawframe()
         # self.drawgrid()
         glPopMatrix()
-
-        # glPushMatrix()
-        # glScalef(scale, scale, scale)
-        # self.drawgrid()
-        # glPopMatrix()
-
 
         # self.draw_unit_sphere()
 
@@ -278,6 +279,34 @@ class Draw:
         glLightfv(GL_LIGHT4,GL_AMBIENT,ambientLightColor)
     
 
+
+        # Time warping
+        if data.TIME_WARPING_FLAG:
+            Tmotion = self.timeWarpingMotion
+            objectColor = (.7, .7, .7, 1.)
+            specularObjectColor = (1.,1.,1.,1.)
+            glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
+            glMaterialfv(GL_FRONT,GL_SHININESS,100)
+            glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
+            if data.TW_timeline == Tmotion.frames:
+                data.TIME_WARPING_FLAG = False
+            self.drawModel(Tmotion.skeleton.root, Tmotion.postures[data.TW_timeline-1])
+            data.TW_timeline += 1
+        
+        # Motion warping
+        if data.MOTION_WARPING_FLAG:
+            Mmotion = self.motionWarpingMotion
+            objectColor = (.7, .7, .7, 1.)
+            specularObjectColor = (1.,1.,1.,1.)
+            glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
+            glMaterialfv(GL_FRONT,GL_SHININESS,100)
+            glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
+            if data.MW_timeline == Mmotion.frames:
+                data.MOTION_WARPING_FLAG = False
+            # print("timeline: %d"%data.MW_timeline)
+            self.drawModel(Mmotion.skeleton.root, Mmotion.postures[data.MW_timeline-1])
+            data.MW_timeline += 1
+
         # Model drawing        
         motion_scale_ratio = data.motion_scale_ratio
         motion = self.motion
@@ -299,10 +328,9 @@ class Draw:
             glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
             glMaterialfv(GL_FRONT,GL_SHININESS,100)
             glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
-            glScalef(motion_scale_ratio, motion_scale_ratio, motion_scale_ratio)
+            # glScalef(motion_scale_ratio, motion_scale_ratio, motion_scale_ratio)
             if not data.START_FLAG:
                 self.drawModel(motion.skeleton.root, motion.postures[data.timeline])
-                
                 self.highlight_joint()
                 self.Limb_IK_Draw()
                 self.Jacobian_IK_Draw()
@@ -310,11 +338,11 @@ class Draw:
                 glPopMatrix()
                 return
 
-            objectColor = (.3, .3, .7, 1.)
-            specularObjectColor = (1.,1.,1.,1.)
-            glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
-            glMaterialfv(GL_FRONT,GL_SHININESS,100)
-            glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
+            # objectColor = (.3, .3, .7, 1.)
+            # specularObjectColor = (1.,1.,1.,1.)
+            # glMaterialfv(GL_FRONT,GL_AMBIENT_AND_DIFFUSE,objectColor)
+            # glMaterialfv(GL_FRONT,GL_SHININESS,100)
+            # glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
             self.drawModel(motion.skeleton.root, motion.postures[data.timeline])
             # print("timeline: %d"%data.timeline)
             
@@ -536,8 +564,8 @@ class Draw:
             b_rv1_axis_len = self.l2norm(b_rv1_axis)
             b_rv1_axis /= b_rv1_axis_len
 
-            print("theta_b2 - theta_b1:")
-            print(theta_b2 - theta_b1)
+            # print("theta_b2 - theta_b1:")
+            # print(theta_b2 - theta_b1)
 
             b_rv1 = (theta_b2 - theta_b1) * b_rv1_axis
             b_rv1_temp = np.array([0., 0., 0., 0.])
@@ -632,11 +660,14 @@ class Draw:
             self.drawCube_glDrawElements()
             glPopMatrix()
 
-            print("----------------------------------------")
+            # print("IK posture Rmatrix:")
+            # for R in data.Limb_IK_posture.Rmatrix:
+            #     print(R)
+            # print("----------------------------------------")
 
             # data.Limb_IK_framebuffer[0] = g_parent_framebuffer2
             # data.Limb_IK_framebuffer[1] = parent_new_framebuffer
-
+            
 
     def Jacobian_IK_Draw(self):
         data = self.opengl_data

@@ -1,6 +1,8 @@
 from OpenGL.GL import *
 from OpenGL.GLU import *
 import numpy as np
+import copy
+
 from utility import Utility as uti
 
 class Node:
@@ -59,12 +61,17 @@ class Posture:
     @staticmethod
     def postureInterpolation(posture1, posture2, t):
         #postion interpolation
-        new_origin = (1.-t) * posture1.origin + t * posture2.origin
+        a = np.zeros(3)
+        b = np.zeros(3)
+        for i in range(3):
+            a[i] = (1-t) * posture1.origin[i]
+            b[i] = t * posture2.origin[i]
+        new_origin = a + b
         #orientation interpolation
         new_Rmatrix = []
         for R1, R2 in zip(posture1.Rmatrix,posture2.Rmatrix):
             new_R = np.identity(4)
-            new_R[:-1,:-1] = uti.slerp(R1, R2, t)
+            new_R[:-1,:-1] = uti.slerp(R1[:-1,:-1], R2[:-1,:-1], t)
             new_Rmatrix.append(new_R)
         new_Rmatrix[0][:-1,3] = new_origin
         new_posture = Posture(new_origin, new_Rmatrix)
@@ -75,10 +82,20 @@ class Posture:
     def postureDifference(posture1, posture2):
         pos_dif = posture2.origin - posture1.origin
         ori_dif = []
+        ind = 1
         for R1, R2 in zip(posture1.Rmatrix,posture2.Rmatrix):
             new_R = np.identity(4)
-            new_R[:-1,:-1] = R1[:-1,:-1].T @ R2[:-1,-1]
-            ori_dif.append(new_R)
+
+            new_R[:-1,:-1] = R1[:-1,:-1].T @ R2[:-1,:-1]
+           
+            # print("R1:")
+            # print(R1)
+            # print("R2:")
+            # print(R2)
+            # print("new_R: %d"%ind)
+            # print(new_R)
+            ori_dif.append(np.array(new_R))
+            ind += 1
         # ori_dif[0][:-1,3] = pos_dif
         new_posture = Posture(pos_dif, ori_dif)
         return new_posture
@@ -90,53 +107,95 @@ class Motion:
         self.frames = frames
         self.frame_rate = frame_rate
     
-    # def timeWarping(self, funct):
-    def timeWarping(self):
+    def timeWarping(self, func, coeff):
         new_postures = []
         i = 1
         while(True):
-            new_frame = 1.4 * i
+            new_frame = None
+            if func == uti.linearFunc:
+                new_frame = func(coeff, i)
+            elif func == uti.sinFunc:
+                new_frame = func(self.frames, i)
+            else:
+                print("Not yet implemented!!")
+
+            if new_frame == self.frames:
+                new_posture = copy.deepcopy(self.postures[self.frames])
+                new_postures.append(new_posture)
+                break
             if new_frame > self.frames:
                 i -= 1
                 break
             a = int(new_frame) 
             t = new_frame - a
+            
             new_posture = Posture.postureInterpolation(self.postures[a], self.postures[a+1], t)
             new_postures.append(new_posture)
             i += 1
+
+        for posture in new_postures:
+            posture.make_framebuffer(self.skeleton.root)
+
         return Motion(self.skeleton, new_postures, i, self.frame_rate)
     
-    def motionWarping(self, frame, new_posture):
+    def motionWarping(self, frame, new_posture, startF, endF, funcType):
         posture_dif = Posture.postureDifference(self.postures[frame], new_posture)
         
         new_postures = []
-        temp_Rmatrix = []
-        for i in range(self.skeleton.joint_num):
-            M = np.identity(4)
-            temp_Rmatrix.append(M)
-        posture0 = Posture(np.zeros(3),temp_Rmatrix)
-        new_postures.append(posture0)
-
-        t1 = 1. / frame
-        for i in range(1, frame+1):
-            new_Rmatrix = []
-            for R1,R2 in zip(self.postures[i].Rmatrix, new_posture.Rmatrix):
-                new_R = np.identity(4)
-                new_R[:-1,:-1] = uti.addByT(R1,R2,i*t1)
-                new_Rmatrix.append(new_R)
-            new_posture = Posture(self.postures[i].origin, new_Rmatrix)
-            new_postures.append(new_posture)
         
-        t2 = 1. / (self.frames - frame)
-        for i in range(frame+1, self.frames+1):
-            k = 1. - (i-frame/(self.frames-frame))
+        for posture in self.postures:
+            new_postures.append(Posture(np.array(posture.origin),list(posture.Rmatrix)))
+        
+        first_slice = frame - startF
+        second_slice = endF - frame
+        first_func = None
+        second_func = None
+        firstArg = None
+        secondArg = None
+        if funcType == 0:
+            first_func = uti.linearFunc_t
+            second_func = uti.linearFunc2_t
+            firstArg = 1. / first_slice
+            secondArg = 1. / second_slice
+        elif funcType == 1:
+            first_func = uti.sinFunc_t
+            second_func = uti.cosFunc_t
+            firstArg = first_slice
+            secondArg = second_slice
+
+        for i in range(startF, frame+1):
+            t = first_func(firstArg, i-startF)
+            b = np.zeros(3)
+            for j in range(3):
+                b[j] = t * posture_dif.origin[j]
+            new_origin = self.postures[i].origin + b
+            
             new_Rmatrix = []
-            for R1,R2 in zip(self.postures[i].Rmatrix, new_posture.Rmatrix):
+            for R1,R2 in zip(self.postures[i].Rmatrix, posture_dif.Rmatrix):
                 new_R = np.identity(4)
-                new_R[:-1,:-1] = uti.addByT(R1,R2,k*t2)
+                new_R[:-1,:-1] = uti.addByT(R1[:-1,:-1],R2[:-1,:-1],t)
                 new_Rmatrix.append(new_R)
-            new_posture = Posture(self.postures[i].origin, new_Rmatrix)
-            new_postures.append(new_posture)
+            new_postures[i] = Posture(new_origin, new_Rmatrix)
+            
+        
+        for i in range(frame+1, endF+1):
+            t = second_func(secondArg, i-frame)
+            b = np.zeros(3)
+            for j in range(3):
+                b[j] = t * posture_dif.origin[j]
+            new_origin = self.postures[i].origin + b
+            
+            new_Rmatrix = []
+            for R1,R2 in zip(self.postures[i].Rmatrix, posture_dif.Rmatrix):
+                new_R = np.identity(4)
+                new_R[:-1,:-1] = uti.addByT(R1[:-1,:-1],R2[:-1,:-1],t)
+                new_Rmatrix.append(new_R)
+            new_postures[i] = Posture(new_origin, new_Rmatrix)
+            
+            
+        for posture in new_postures:
+            posture.Rmatrix[0][:-1,3] = posture.origin
+            posture.make_framebuffer(self.skeleton.root)
         
         return Motion(self.skeleton, new_postures, self.frames, self.frame_rate)
         
@@ -176,10 +235,6 @@ class OpenGL_Data():
         self.Is_Endeffector_Selected = False
         self.selected_endEffector = None
         self.endEffector_trans = np.array([0., 0., 0., 0.])
-
-
-        # self.Limb_IK_framebuffer = []
-        # self.Limb_Is_drawn_nodeList = None
         self.Limb_IK_posture = None
 
 
@@ -187,3 +242,9 @@ class OpenGL_Data():
         self.Jacobian_IK_framebuffer = []
         self.Jacobian_nodeList = []
         self.Jacobian_Is_drawn_nodeList = None
+
+        self.TIME_WARPING_FLAG = False
+        self.TW_timeline = 0
+        self.MOTION_WARPING_FLAG = False
+        self.MW_timeline = 0
+

@@ -1,6 +1,7 @@
 from OpenGL.GL import *
 from OpenGL.GLU import *
 import numpy as np
+import copy
 
 from data import *
 from draw import Draw
@@ -8,6 +9,7 @@ from parsing import *
 from myWidget import *
 from view import *
 from presenter import *
+from utility import Utility as uti
 
 class MainWindowLogic(MainWindowPresenter):
     def __init__(self, opengl, opengl_data, motion):
@@ -81,6 +83,7 @@ class OpenGL_Logic(OpenGL_Presenter):
         
         self.mainWindow.makeScroll(skeleton.jointListStr_FK, skeleton.jointListStr_IK, skeleton.jointList)
 
+        # print("joint_nun: %d"%parsing.joint_num)
         print("File name: %s"%(file_name))
         print("###########################################################")
         file.close()
@@ -158,7 +161,8 @@ class OpenGL_Logic(OpenGL_Presenter):
 
     def paintCB(self):
         self.draw.render()
-        if self.opengl_data.START_FLAG:
+        # if self.opengl_data.START_FLAG or self.opengl_data.TIME_WARPING_FLAG:
+        if self.opengl_data.START_FLAG or self.opengl_data.MOTION_WARPING_FLAG:
             self.opengl.viewUpdate()
 
 class RadioButtonLogic(RadioPresenter):
@@ -189,7 +193,7 @@ class RadioButtonLogic(RadioPresenter):
         # initialize Limb IK posture
         data.Limb_IK_posture = Posture(np.array(posture.origin), list(posture.Rmatrix))
         data.Limb_IK_posture.make_framebuffer(self.motion.skeleton.root)
-        
+
         # initialize Jacobian IK framebuffer
         temp_framebuffer, temp_nodeList = self.makeTempFramebuffer(end,posture,[],[])
         data.Jacobian_IK_framebuffer = []
@@ -241,10 +245,11 @@ class CheckBoxLogic(CheckBoxPresenter):
         self.opengl.viewUpdate()
 
 class PushButtonLogic(PushButtonPresenter):
-    def __init__(self, opengl, opengl_data, motion):
+    def __init__(self, opengl, opengl_data, motion, draw):
         self.opengl = opengl
         self.opengl_data = opengl_data
         self.motion = motion
+        self.draw = draw
 
     def startPressCB(self):
         self.opengl_data.START_FLAG = not self.opengl_data.START_FLAG
@@ -276,6 +281,31 @@ class PushButtonLogic(PushButtonPresenter):
         self.opengl_data.line = np.array(positions)
         self.opengl_data.LINE_FLAG = True
         self.opengl.viewUpdate()
+    
+    def timeWarpingCB(self, funcType, coeff):
+        func = None
+        if funcType == 0:
+            func = uti.linearFunc
+        elif funcType == 1:
+            func = uti.sinFunc
+        self.draw.setTimeWarpingMotion(self.motion.timeWarping(func, coeff))
+        self.opengl_data.TIME_WARPING_FLAG = True
+        self.opengl_data.TW_timeline = 0
+
+        self.opengl_data.START_FLAG = True
+        self.opengl_data.timeline = 1
+        self.opengl.viewUpdate()
+    
+    def motionWarpingCB(self, funcType, startF, endF):
+        self.draw.setMotionWarpingMotion(self.motion.motionWarping(self.opengl_data.timeline, self.opengl_data.Limb_IK_posture, startF, endF, funcType))
+        self.opengl_data.MOTION_WARPING_FLAG = True
+        self.opengl_data.MW_timeline = 1
+        
+        # self.opengl_data.START_FLAG = True
+        # self.opengl_data.timeline = 1
+        self.opengl.viewUpdate()
+
+            
 
 class SliderLogic(SliderPresenter):
     def __init__(self, opengl, opengl_data, motion, sliderView=None):

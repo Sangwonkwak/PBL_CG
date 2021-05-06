@@ -27,7 +27,9 @@ class WindowClass(QDialog, form_class):
         self.FK_Checkbox.stateChanged.connect(self.FK_Checkbox_cb)
         self.Limb_IK_Checkbox.stateChanged.connect(self.Limb_IK_Checkbox_cb)
         self.Jacobian_IK_Checkbox.stateChanged.connect(self.Jacobian_IK_Checkbox_cb)
-    
+        self.timeWarpingButton.clicked.connect(self.timeWarping_cb)
+        self.motionWarpingButton.clicked.connect(self.motionWarping_cb)
+
     def setUi(self):
         self.setupUi(self)
         self.fplusButton.setAutoRepeat(True)
@@ -155,6 +157,21 @@ class WindowClass(QDialog, form_class):
         positions = np.array([[float(self.line_x1.text()), float(self.line_y1.text()), float(self.line_z1.text())], [float(self.line_x2.text()), float(self.line_y2.text()), float(self.line_z2.text())]])
         self.PushButtonPresenter.lineDrawCB(positions)
 
+    def timeWarping_cb(self):
+        if self.linearRadioButton.isChecked():
+            coeff = float(self.linearCoeff.text())
+            print(coeff)
+            self.PushButtonPresenter.timeWarpingCB(0, coeff)
+        elif self.sinRadioButton.isChecked():
+            self.PushButtonPresenter.timeWarpingCB(1, None)
+            
+    def motionWarping_cb(self):
+        if self.linearRadioButton2.isChecked():
+            funcType = 0
+        elif self.sinRadioButton2.isChecked():
+            funcType = 1
+        self.PushButtonPresenter.motionWarpingCB(funcType, int(self.startFrame.text()), int(self.endFrame.text()))
+
 def main():
     app = QApplication(sys.argv)
     # mainWindow 생성 및 get opengl
@@ -174,7 +191,7 @@ def main():
     openglPresenter = OpenGL_Logic(opengl, opengl_data, motion, myWindow, draw)
     radioButtonPresenter = RadioButtonLogic(opengl, opengl_data, motion)
     checkBoxPresenter = CheckBoxLogic(opengl, opengl_data, motion)
-    pushButtonPresenter = PushButtonLogic(opengl, opengl_data, motion)
+    pushButtonPresenter = PushButtonLogic(opengl, opengl_data, motion, draw)
     sliderPresenter = SliderLogic(opengl, opengl_data, motion)
     labelPresenter = LabelLogic(opengl, opengl_data, motion)
     lineEditPresenter = LineEditLogic(opengl, opengl_data, motion)

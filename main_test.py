@@ -42,16 +42,28 @@
 # # point_ani = animation.FuncAnimation(fig, update_point, frames=25, fargs=(data,point,line),interval=50,blit=False)
 # plt.show()
 
-class Test:
-    def __init__(self):
-        self.a = 1
-        self.b = 2
-        self.c = 3
-    
-    # def __init__(self):
-    #     self = self
 
-test = Test()
-print(test)
-test1 = Test(test)
-print(test1)
+
+import numpy as np
+from utility import Utility as uti
+
+def ZYXEulerToRotMat(euler):
+    zang, yang, xang = euler
+    Rx = np.array([[1,0,0],
+                   [0, np.cos(xang), -np.sin(xang)],
+                   [0, np.sin(xang), np.cos(xang)]])
+    Ry = np.array([[np.cos(yang), 0, np.sin(yang)],
+                   [0,1,0],
+                   [-np.sin(yang), 0, np.cos(yang)]])
+    Rz = np.array([[np.cos(zang), -np.sin(zang), 0],
+                   [np.sin(zang), np.cos(zang), 0],
+                   [0,0,1]])
+    return Rz @ Ry @ Rx
+
+euler1 = np.array([-1.,1.,0.])*np.radians(90)
+euler2 = np.array([-1.,1.,0.])*np.radians(90) 
+R1 = ZYXEulerToRotMat(euler1)
+R2 = ZYXEulerToRotMat(euler2)
+
+R = R1.T @ R2
+print(R)

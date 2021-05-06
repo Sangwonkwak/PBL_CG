@@ -56,7 +56,7 @@ class MyOpenGL(QOpenGLWidget):
         self.presenter.mouseReleaseCB(button)
 
     def mouseMoveEvent(self, e):
-        
+
         self.presenter.mouseMoveCB([e.x(),e.y()])
     
     def wheelEvent(self, e):
