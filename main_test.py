@@ -44,26 +44,37 @@
 
 
 
-import numpy as np
-from utility import Utility as uti
+import sys
+from PyQt5.QtWidgets import *
+from PyQt5 import uic
 
-def ZYXEulerToRotMat(euler):
-    zang, yang, xang = euler
-    Rx = np.array([[1,0,0],
-                   [0, np.cos(xang), -np.sin(xang)],
-                   [0, np.sin(xang), np.cos(xang)]])
-    Ry = np.array([[np.cos(yang), 0, np.sin(yang)],
-                   [0,1,0],
-                   [-np.sin(yang), 0, np.cos(yang)]])
-    Rz = np.array([[np.cos(zang), -np.sin(zang), 0],
-                   [np.sin(zang), np.cos(zang), 0],
-                   [0,0,1]])
-    return Rz @ Ry @ Rx
+# ------------------------------------------
+# -- Create window
+# ------------------------------------------
+myApp = QApplication(sys.argv)                   # Create an PyQT4 application object.
+w = QWidget()                                # Add menubar, need to use QMainWindow().
+w.setWindowTitle('Add FileDialog')
+w.resize(300, 240)
 
-euler1 = np.array([-1.,1.,0.])*np.radians(90)
-euler2 = np.array([-1.,1.,0.])*np.radians(90) 
-R1 = ZYXEulerToRotMat(euler1)
-R2 = ZYXEulerToRotMat(euler2)
+# ------------------------------------------
+# -- Create a button in the window
+# ------------------------------------------
+# myButton1 = QPushButton('Open Image', w)
+# myButton1.move(20,80)
 
-R = R1.T @ R2
-print(R)
+# ------------------------------------------
+# -- Create file dialog
+# ------------------------------------------
+filename = QFileDialog.getOpenFileName(None, 'Open File', './', "BVH(*.bvh)")
+print(filename)
+
+# print file contents
+with open(filename, 'r') as f:
+    print(f.read())
+
+
+# ------------------------------------------
+# -- Show the window and run the app
+# ------------------------------------------
+w.show()
+myApp.exec_()

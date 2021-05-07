@@ -762,7 +762,7 @@ class Draw:
             glMaterialfv(GL_FRONT,GL_SPECULAR,specularObjectColor)
                   
             # all joint draw
-            J_posture = Posture()
+            J_posture = Posture(None, [])
             for item in posture.Rmatrix:
                 J_posture.Rmatrix.append(np.array(item))
             J_posture.framebuffer = [None] * (motion.skeleton.joint_num)

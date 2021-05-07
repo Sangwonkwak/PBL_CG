@@ -62,6 +62,11 @@ class Utility:
         return result
     
     @staticmethod
+    def addByT_v2(R1,R2,t):
+        result = Utility.exp(t*Utility.log(R1)) @ R2
+        return result
+    
+    @staticmethod
     def linearFunc(coeff, x):
         return coeff * x
     
@@ -84,3 +89,12 @@ class Utility:
     @staticmethod
     def cosFunc_t(slice, x):
         return np.cos(x * np.pi * 0.5 * (1./slice))
+    
+    @staticmethod
+    def projection_y(R):
+        rv = Utility.log(R)
+        y = np.array([0., 1., 0.])
+        val = np.dot(rv, y)
+        new_rv = np.array([0., val, 0.])
+        new_R = Utility.exp(new_rv)
+        return new_R

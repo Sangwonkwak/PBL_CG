@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtWidgets import *
-from PyQt5 import uic
+from PyQt5 import uic, QtCore
 # from PyQt5.QtCore import Qt
 
 from presenter import *
@@ -29,6 +29,9 @@ class WindowClass(QDialog, form_class):
         self.Jacobian_IK_Checkbox.stateChanged.connect(self.Jacobian_IK_Checkbox_cb)
         self.timeWarpingButton.clicked.connect(self.timeWarping_cb)
         self.motionWarpingButton.clicked.connect(self.motionWarping_cb)
+        self.motion1FindButton.clicked.connect(self.showFile1)
+        self.motion2FindButton.clicked.connect(self.showFile2)
+        self.motionStitchingButton.clicked.connect(self.motionStitching_cb)
 
     def setUi(self):
         self.setupUi(self)
@@ -50,6 +53,7 @@ class WindowClass(QDialog, form_class):
         self.openGLWidget.addLabel(self.jointLabel)
         self.jointLabel.setStyleSheet("background-color: #f89b00;")
         self.openGLWidget.setSlider(self.timeLine)
+        
         
 
     def getOpenGL(self):
@@ -172,6 +176,23 @@ class WindowClass(QDialog, form_class):
             funcType = 1
         self.PushButtonPresenter.motionWarpingCB(funcType, int(self.startFrame.text()), int(self.endFrame.text()))
 
+    def showFile1(self):
+        file_path = QFileDialog.getOpenFileName(self, 'Open File', './', "BVH(*.bvh)")
+        file_name = ''.join(file_path[0])
+        self.motion1Label.setText(file_name)
+    
+    def showFile2(self):
+        file_path = QFileDialog.getOpenFileName(self, 'Open File', './', "BVH(*.bvh)")
+        file_name = ''.join(file_path[0])
+        self.motion2Label.setText(file_name)
+    
+    def motionStitching_cb(self):
+        if self.linearRadioButton3.isChecked():
+            funcType = 0
+        elif self.sinRadioButton3.isChecked():
+            funcType = 1
+        self.PushButtonPresenter.motionStitchingCB(self.motion1Label.text(),self.motion2Label.text(),funcType,int(self.sliceEdit.text()))
+
 def main():
     app = QApplication(sys.argv)
     # mainWindow 생성 및 get opengl
@@ -191,7 +212,7 @@ def main():
     openglPresenter = OpenGL_Logic(opengl, opengl_data, motion, myWindow, draw)
     radioButtonPresenter = RadioButtonLogic(opengl, opengl_data, motion)
     checkBoxPresenter = CheckBoxLogic(opengl, opengl_data, motion)
-    pushButtonPresenter = PushButtonLogic(opengl, opengl_data, motion, draw)
+    pushButtonPresenter = PushButtonLogic(opengl, opengl_data, motion, draw, myWindow)
     sliderPresenter = SliderLogic(opengl, opengl_data, motion)
     labelPresenter = LabelLogic(opengl, opengl_data, motion)
     lineEditPresenter = LineEditLogic(opengl, opengl_data, motion)

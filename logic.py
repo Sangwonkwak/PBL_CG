@@ -68,7 +68,6 @@ class OpenGL_Logic(OpenGL_Presenter):
         postures = parsing.make_postures(full_list, line_num[0], channel_list)
         for posture in postures:
             posture.make_framebuffer(root)
-       
         skeleton = Skeleton(parsing.joint_num, parsing.total_joint_num, list(parsing.jointList), root)
     
         # self.motion = Motion(skeleton, postures, parsing.frames, parsing.frame_rate)
@@ -245,11 +244,12 @@ class CheckBoxLogic(CheckBoxPresenter):
         self.opengl.viewUpdate()
 
 class PushButtonLogic(PushButtonPresenter):
-    def __init__(self, opengl, opengl_data, motion, draw):
+    def __init__(self, opengl, opengl_data, motion, draw, mainWindow):
         self.opengl = opengl
         self.opengl_data = opengl_data
         self.motion = motion
         self.draw = draw
+        self.mainWindow = mainWindow
 
     def startPressCB(self):
         self.opengl_data.START_FLAG = not self.opengl_data.START_FLAG
@@ -304,9 +304,32 @@ class PushButtonLogic(PushButtonPresenter):
         # self.opengl_data.START_FLAG = True
         # self.opengl_data.timeline = 1
         self.opengl.viewUpdate()
+    
+    def motionStitchingCB(self, file_name1, file_name2, funcType, slice):
+        parsing1 = BVH_Parsing()
+        parsing2 = BVH_Parsing()
+        # print(file_name1)
+        data = self.opengl_data
+        data.ENABLE_FLAG = True
+        data.START_FLAG = False
+        data.timeline_changed = True
+        data.timeline = 0
 
-            
+        M1 = parsing1.parseBVH(file_name1)
+        M2 = parsing2.parseBVH(file_name2)
+        newM = Motion.motionStitching(M1, M2, slice, funcType)
+        
+        self.motion.skeleton = newM.skeleton
+        self.motion.postures = newM.postures
+        self.motion.frames = newM.frames
+        self.motion.frame_rate = newM.frame_rate
 
+        self.motion.skeleton.makeJointList_FK(self.motion.skeleton.root, "")
+        self.motion.skeleton.makeJointList_IK(self.motion.skeleton.root, "")
+        self.mainWindow.makeScroll(self.motion.skeleton.jointListStr_FK, self.motion.skeleton.jointListStr_IK, self.motion.skeleton.jointList)
+
+        self.opengl.viewUpdate()
+        
 class SliderLogic(SliderPresenter):
     def __init__(self, opengl, opengl_data, motion, sliderView=None):
         self.opengl = opengl

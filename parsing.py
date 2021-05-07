@@ -129,3 +129,22 @@ class BVH_Parsing:
         #     print(postures[i].origin)
         
         return postures
+
+    def parseBVH(self, file_name):
+        
+        file = open(file_name,'r')
+        full_list = file.readlines()
+        line_num = [0]
+        channel_list = []
+        postures = []
+        root = self.make_tree(full_list, None, line_num, channel_list, [0])
+        postures = self.make_postures(full_list, line_num[0], channel_list)
+        for posture in postures:
+            posture.make_framebuffer(root)
+        skeleton = Skeleton(self.joint_num, self.total_joint_num, list(self.jointList), root)
+        M = Motion(skeleton, postures, self.frames, self.frame_rate)
+        print("File name: %s"%(file_name))
+        print("###########################################################")
+        file.close()
+        
+        return M

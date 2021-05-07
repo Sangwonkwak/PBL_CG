@@ -82,21 +82,27 @@ class Posture:
     def postureDifference(posture1, posture2):
         pos_dif = posture2.origin - posture1.origin
         ori_dif = []
-        ind = 1
+        
         for R1, R2 in zip(posture1.Rmatrix,posture2.Rmatrix):
             new_R = np.identity(4)
-
             new_R[:-1,:-1] = R1[:-1,:-1].T @ R2[:-1,:-1]
-           
-            # print("R1:")
-            # print(R1)
-            # print("R2:")
-            # print(R2)
-            # print("new_R: %d"%ind)
-            # print(new_R)
             ori_dif.append(np.array(new_R))
-            ind += 1
-        # ori_dif[0][:-1,3] = pos_dif
+            
+        
+        new_posture = Posture(pos_dif, ori_dif)
+        return new_posture
+    
+    @staticmethod
+    def postureDifference_v2(posture1, posture2):
+        pos_dif = np.array(posture1.origin) - np.array(posture2.origin)
+        ori_dif = []
+        
+        for R1, R2 in zip(posture1.Rmatrix,posture2.Rmatrix):
+            new_R = np.identity(4)
+            new_R[:-1,:-1] = R1[:-1,:-1] @ R2[:-1,:-1].T
+            ori_dif.append(np.array(new_R))
+            
+        
         new_posture = Posture(pos_dif, ori_dif)
         return new_posture
 
@@ -198,7 +204,72 @@ class Motion:
             posture.make_framebuffer(self.skeleton.root)
         
         return Motion(self.skeleton, new_postures, self.frames, self.frame_rate)
+    
+    @staticmethod
+    def motionStitching(M1, M2, slice, funcType):
+        A_endPos = M1.postures[M1.frames]
+        B_startPos = M2.postures[1]
+        pos_dif = Posture.postureDifference_v2(A_endPos,B_startPos)
+        # project to y-axis
+        for i in range(len(pos_dif.Rmatrix)):
+            new_R = np.identity(4)
+            new_R[:-1,:-1] = uti.projection_y(pos_dif.Rmatrix[i][:-1,:-1])
+            pos_dif.Rmatrix[i] = new_R
+            
+        newB_postures = []
+        for i in range(1, M2.frames+1):
+            newB_postures.append(Posture(np.array(M2.postures[i].origin),list(M2.postures[i].Rmatrix)))
         
+        # Alignment
+        for posture in newB_postures:
+            posture.origin = A_endPos.origin + pos_dif.Rmatrix[0][:-1,:-1] @ (posture.origin - B_startPos.origin)
+            posture.Rmatrix[0][:-1,:-1] = pos_dif.Rmatrix[0][:-1,:-1] @ posture.Rmatrix[0][:-1,:-1]
+            posture.Rmatrix[0][:-1,3] = posture.origin
+        
+        # Motion Warping
+        # pos_dif = Posture.postureDifference_v2(A_endPos,newB_postures[0])
+        pos_dif = Posture.postureDifference(newB_postures[0],A_endPos)
+        # project to y-axis
+        for i in range(len(pos_dif.Rmatrix)):
+            new_R = np.identity(4)
+            new_R[:-1,:-1] = uti.projection_y(pos_dif.Rmatrix[i][:-1,:-1])
+            pos_dif.Rmatrix[i] = new_R
+            
+        func = None
+        arg = None
+        if funcType == 0:
+            func = uti.linearFunc2_t
+            arg = 1. / slice
+        elif funcType == 1:
+            func = uti.cosFunc_t
+            arg = slice
+
+        for i in range(1, slice+1):
+            t = func(arg, i)
+            b = np.zeros(3)
+            for j in range(3):
+                b[j] = t * pos_dif.origin[j]
+            new_origin = newB_postures[i].origin + b
+
+            new_Rmatrix = []
+            # for R1,R2 in zip(pos_dif.Rmatrix, newB_postures[i].Rmatrix):
+            for R1,R2 in zip(newB_postures[i].Rmatrix, pos_dif.Rmatrix):
+                new_R = np.identity(4)
+                # new_R[:-1,:-1] = uti.addByT_v2(R1[:-1,:-1],R2[:-1,:-1],t)
+                new_R[:-1,:-1] = uti.addByT(R1[:-1,:-1],R2[:-1,:-1],t)
+                new_Rmatrix.append(new_R)
+            new_Rmatrix[0][:-1,3] = new_origin
+            newB_postures[i] = Posture(new_origin, new_Rmatrix)
+        
+        # Concatenate
+        for i in range(1, M2.frames):
+            newB_postures[i].make_framebuffer(M1.skeleton.root)
+            M1.postures.append(newB_postures[i])
+        M1.frames = M1.frames + (M2.frames-1)
+
+        return M1
+
+
 class OpenGL_Data():
     def __init__(self):
         self.Left_pressed = False
