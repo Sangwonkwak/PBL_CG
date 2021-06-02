@@ -126,50 +126,17 @@
     <enum>Qt::Horizontal</enum>
    </property>
   </widget>
-  <widget class="QWidget" name="verticalLayoutWidget">
-   <property name="geometry">
-    <rect>
-     <x>870</x>
-     <y>20</y>
-     <width>271</width>
-     <height>131</height>
-    </rect>
-   </property>
-   <layout class="QVBoxLayout" name="verticalLayout">
-    <item>
-     <widget class="TotalFrameLabel" name="totalFrame">
-      <property name="text">
-       <string>Total frames:</string>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <widget class="CurrentFrameLabel" name="currentFrame">
-      <property name="text">
-       <string>Current frame:</string>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <widget class="OriginPosLabel" name="origin">
-      <property name="text">
-       <string>Origin: </string>
-      </property>
-     </widget>
-    </item>
-   </layout>
-  </widget>
   <widget class="QToolBox" name="toolBox">
    <property name="geometry">
     <rect>
-     <x>860</x>
-     <y>180</y>
+     <x>840</x>
+     <y>210</y>
      <width>301</width>
      <height>571</height>
     </rect>
    </property>
    <property name="currentIndex">
-    <number>0</number>
+    <number>2</number>
    </property>
    <widget class="QWidget" name="page">
     <property name="geometry">
@@ -177,7 +144,7 @@
       <x>0</x>
       <y>0</y>
       <width>301</width>
-      <height>519</height>
+      <height>493</height>
      </rect>
     </property>
     <attribute name="label">
@@ -286,8 +253,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>98</width>
-             <height>28</height>
+             <width>267</width>
+             <height>243</height>
             </rect>
            </property>
           </widget>
@@ -301,7 +268,7 @@
      <property name="geometry">
       <rect>
        <x>0</x>
-       <y>330</y>
+       <y>310</y>
        <width>291</width>
        <height>181</height>
       </rect>
@@ -467,7 +434,7 @@
       <x>0</x>
       <y>0</y>
       <width>301</width>
-      <height>519</height>
+      <height>493</height>
      </rect>
     </property>
     <attribute name="label">
@@ -758,6 +725,201 @@
      </widget>
     </widget>
    </widget>
+   <widget class="QWidget" name="page_3">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>0</y>
+      <width>301</width>
+      <height>493</height>
+     </rect>
+    </property>
+    <attribute name="label">
+     <string>Physics Simulator</string>
+    </attribute>
+    <widget class="QPushButton" name="makeParticleButton">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>190</y>
+       <width>201</width>
+       <height>51</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>MakeParticles</string>
+     </property>
+    </widget>
+    <widget class="QRadioButton" name="twoDRadioButton">
+     <property name="geometry">
+      <rect>
+       <x>20</x>
+       <y>20</y>
+       <width>90</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>2D model</string>
+     </property>
+    </widget>
+    <widget class="QRadioButton" name="threeDRadioButton">
+     <property name="geometry">
+      <rect>
+       <x>20</x>
+       <y>60</y>
+       <width>90</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>3D model</string>
+     </property>
+    </widget>
+    <widget class="QWidget" name="horizontalLayoutWidget_7">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>90</y>
+       <width>111</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_11">
+      <item>
+       <widget class="QLabel" name="label_15">
+        <property name="text">
+         <string>Time Step:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="timestepEdit"/>
+      </item>
+     </layout>
+    </widget>
+    <widget class="QWidget" name="horizontalLayoutWidget_8">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>130</y>
+       <width>141</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_12">
+      <item>
+       <widget class="QLabel" name="label_17">
+        <property name="text">
+         <string>Ks:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="ksEdit"/>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_19">
+        <property name="text">
+         <string>Kd:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="kdEdit"/>
+      </item>
+     </layout>
+    </widget>
+   </widget>
+  </widget>
+  <widget class="QTabWidget" name="tabWidget_4">
+   <property name="geometry">
+    <rect>
+     <x>840</x>
+     <y>10</y>
+     <width>341</width>
+     <height>191</height>
+    </rect>
+   </property>
+   <property name="currentIndex">
+    <number>1</number>
+   </property>
+   <widget class="QWidget" name="tab_9">
+    <attribute name="title">
+     <string>BVH</string>
+    </attribute>
+    <widget class="QWidget" name="verticalLayoutWidget">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>311</width>
+       <height>161</height>
+      </rect>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <widget class="TotalFrameLabel" name="totalFrame">
+        <property name="text">
+         <string>Total frames:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="CurrentFrameLabel" name="currentFrame">
+        <property name="text">
+         <string>Current frame:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="OriginPosLabel" name="origin">
+        <property name="text">
+         <string>Origin: </string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="tab_10">
+    <attribute name="title">
+     <string>Physics</string>
+    </attribute>
+    <widget class="QWidget" name="verticalLayoutWidget_7">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>0</y>
+       <width>281</width>
+       <height>151</height>
+      </rect>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_8">
+      <item>
+       <widget class="TimeStepLabel" name="timestepLabel">
+        <property name="text">
+         <string>Time Step:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="KsLabel" name="ksLabel">
+        <property name="text">
+         <string>Spring Stiffness:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="KdLabel" name="kdLabel">
+        <property name="text">
+         <string>Damping:</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </widget>
   </widget>
  </widget>
  <customwidgets>
@@ -788,6 +950,21 @@
   </customwidget>
   <customwidget>
    <class>JointPosLabel</class>
+   <extends>QLabel</extends>
+   <header>myWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>TimeStepLabel</class>
+   <extends>QLabel</extends>
+   <header>myWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>KsLabel</class>
+   <extends>QLabel</extends>
+   <header>myWidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>KdLabel</class>
    <extends>QLabel</extends>
    <header>myWidget.h</header>
   </customwidget>

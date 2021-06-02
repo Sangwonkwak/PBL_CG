@@ -48,6 +48,9 @@ class OpenGL_Logic(OpenGL_Presenter):
             return True
         else:
             return False
+    
+    def IsPhysicsEmpty(self):
+        return self.opengl_data.Is_particleSystem_Empty
 
     def dropCB(self, file_path):
         data = self.opengl_data
@@ -329,7 +332,22 @@ class PushButtonLogic(PushButtonPresenter):
         self.mainWindow.makeScroll(self.motion.skeleton.jointListStr_FK, self.motion.skeleton.jointListStr_IK, self.motion.skeleton.jointList)
 
         self.opengl.viewUpdate()
+    
+    def makeParticleCB(self, modelType, timestep, ks, kd):
+        if timestep != None:
+            self.opengl_data.timestep = timestep
+        if ks != None:
+            self.opengl_data.ks = ks
+        if kd != None:
+            self.opengl_data.kd = kd
+
+        print()
+        if modelType == 0:
+            self.draw.makeParticle2D(self.opengl_data.ks,self.opengl_data.kd)
+        else:
+            self.draw.makeParticle3D(self.opengl_data.ks,self.opengl_data.kd)
         
+
 class SliderLogic(SliderPresenter):
     def __init__(self, opengl, opengl_data, motion, sliderView=None):
         self.opengl = opengl
@@ -366,6 +384,15 @@ class LabelLogic(LabelPresenter):
     
     def getJointPos(self):
         return self.opengl_data.current_joint_pos
+    
+    def getTimeStep(self):
+        return self.opengl_data.timestep
+    
+    def getKs(self):
+        return self.opengl_data.ks
+    
+    def getKd(self):
+        return self.opengl_data.kd
 
 class LineEditLogic(LineEditPresenter):
     def __init__(self, opengl, opengl_data, motion):

@@ -12,7 +12,8 @@ class MyOpenGL(QOpenGLWidget):
         super(MyOpenGL, self).__init__(parent)
         self.setAcceptDrops(True)
         self.sliderView = None
-        self.labelView = []
+        self.BVHLabelView = []
+        self.physicsLabelView = []
         self.mainWindowView = None
         self.presenter = None
 
@@ -25,8 +26,11 @@ class MyOpenGL(QOpenGLWidget):
     def setSlider(self, slider):
         self.sliderView = slider
     
-    def addLabel(self, label):
-        self.labelView.append(label)
+    def addBVHLabel(self, label):
+        self.BVHLabelView.append(label)
+    
+    def addPhysicsLabel(self, label):
+        self.physicsLabelView.append(label)
 
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls():
@@ -66,9 +70,12 @@ class MyOpenGL(QOpenGLWidget):
         # print("4.paintGL")
         self.presenter.paintCB()
         if not self.presenter.IsMotionEmpty():
-            for item in self.labelView:
+            for item in self.BVHLabelView:
                 item.viewUpdate()
             self.sliderView.viewUpdate()
+        if not self.presenter.IsPhysicsEmpty():
+            for item in self.physicsLabelView:
+                item.viewUpdate()
     
     def viewUpdate(self):
         # print("3.openglViewUpdate")
@@ -204,6 +211,39 @@ class JointPosLabel(QLabel):
 
     def viewUpdate(self):
         text = "Current Joint: " + str(self.presenter.getJointPos())
+        self.setText(text)
+
+class TimeStepLabel(QLabel):
+    def __init__(self,parent=None):
+        super(TimeStepLabel,self).__init__(parent)
+
+    def setPresenter(self, presenter):
+        self.presenter = presenter
+
+    def viewUpdate(self):
+        text = "Time Step: " + str(self.presenter.getTimeStep())
+        self.setText(text)
+
+class KsLabel(QLabel):
+    def __init__(self,parent=None):
+        super(KsLabel,self).__init__(parent)
+
+    def setPresenter(self, presenter):
+        self.presenter = presenter
+
+    def viewUpdate(self):
+        text = "Spring Stiffness: " + str(self.presenter.getKs())
+        self.setText(text)
+
+class KdLabel(QLabel):
+    def __init__(self,parent=None):
+        super(KdLabel,self).__init__(parent)
+
+    def setPresenter(self, presenter):
+        self.presenter = presenter
+
+    def viewUpdate(self):
+        text = "Damping: " + str(self.presenter.getKd())
         self.setText(text)
 
 # class myEdit(QTextEdit):

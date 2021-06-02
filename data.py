@@ -4,6 +4,8 @@ import numpy as np
 import copy
 
 from utility import Utility as uti
+from particleSystem import *
+from particleSolver import *
 
 class Node:
     def __init__(self, name=None):
@@ -95,6 +97,7 @@ class Posture:
     @staticmethod
     def postureDifference_v2(posture1, posture2):
         pos_dif = np.array(posture1.origin) - np.array(posture2.origin)
+        # pos_dif = posture1.origin - posture2.origin
         ori_dif = []
         
         for R1, R2 in zip(posture1.Rmatrix,posture2.Rmatrix):
@@ -183,7 +186,7 @@ class Motion:
                 new_Rmatrix.append(new_R)
             new_postures[i] = Posture(new_origin, new_Rmatrix)
             
-        
+
         for i in range(frame+1, endF+1):
             t = second_func(secondArg, i-frame)
             b = np.zeros(3)
@@ -211,11 +214,10 @@ class Motion:
         B_startPos = M2.postures[1]
         pos_dif = Posture.postureDifference_v2(A_endPos,B_startPos)
         # project to y-axis
-        for i in range(len(pos_dif.Rmatrix)):
-            new_R = np.identity(4)
-            new_R[:-1,:-1] = uti.projection_y(pos_dif.Rmatrix[i][:-1,:-1])
-            pos_dif.Rmatrix[i] = new_R
-            
+        new_R = np.identity(4)
+        new_R[:-1,:-1] = uti.projection_y(pos_dif.Rmatrix[0][:-1,:-1])
+        pos_dif.Rmatrix[0] = new_R
+
         newB_postures = []
         for i in range(1, M2.frames+1):
             newB_postures.append(Posture(np.array(M2.postures[i].origin),list(M2.postures[i].Rmatrix)))
@@ -227,14 +229,7 @@ class Motion:
             posture.Rmatrix[0][:-1,3] = posture.origin
         
         # Motion Warping
-        # pos_dif = Posture.postureDifference_v2(A_endPos,newB_postures[0])
-        pos_dif = Posture.postureDifference(newB_postures[0],A_endPos)
-        # project to y-axis
-        for i in range(len(pos_dif.Rmatrix)):
-            new_R = np.identity(4)
-            new_R[:-1,:-1] = uti.projection_y(pos_dif.Rmatrix[i][:-1,:-1])
-            pos_dif.Rmatrix[i] = new_R
-            
+        pos_dif = Posture.postureDifference(newB_postures[0],A_endPos) 
         func = None
         arg = None
         if funcType == 0:
@@ -252,11 +247,10 @@ class Motion:
             new_origin = newB_postures[i].origin + b
 
             new_Rmatrix = []
-            # for R1,R2 in zip(pos_dif.Rmatrix, newB_postures[i].Rmatrix):
             for R1,R2 in zip(newB_postures[i].Rmatrix, pos_dif.Rmatrix):
                 new_R = np.identity(4)
-                # new_R[:-1,:-1] = uti.addByT_v2(R1[:-1,:-1],R2[:-1,:-1],t)
                 new_R[:-1,:-1] = uti.addByT(R1[:-1,:-1],R2[:-1,:-1],t)
+                # new_R[:-1,:-1] = uti.addByT(np.identity(3),R2[:-1,:-1],t)
                 new_Rmatrix.append(new_R)
             new_Rmatrix[0][:-1,3] = new_origin
             newB_postures[i] = Posture(new_origin, new_Rmatrix)
@@ -319,3 +313,11 @@ class OpenGL_Data():
         self.MOTION_WARPING_FLAG = False
         self.MW_timeline = 0
 
+        self.particleSystem = None
+        self.dampingDataSet = None
+        self.Is_particleSystem_Empty = True
+        self.particleSolver = None
+        self.timestep = 0.01
+        self.ks = 300
+        self.kd = 10
+        self.normal_v = np.array([0.,1.,0.])

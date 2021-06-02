@@ -43,38 +43,16 @@
 # plt.show()
 
 
+from OpenGL.raw.GL.VERSION.GL_1_0 import GL_NONE
+import numpy as np
 
-import sys
-from PyQt5.QtWidgets import *
-from PyQt5 import uic
+def func1(arr):
+    arr[0] = 3.3
 
-# ------------------------------------------
-# -- Create window
-# ------------------------------------------
-myApp = QApplication(sys.argv)                   # Create an PyQT4 application object.
-w = QWidget()                                # Add menubar, need to use QMainWindow().
-w.setWindowTitle('Add FileDialog')
-w.resize(300, 240)
+arr1 = np.array([1,2,3])
+arr2 = np.array([4,5,6])
+temp1 = 7
+arr3 = np.concatenate((arr1,arr2,temp1), axis=None)
 
-# ------------------------------------------
-# -- Create a button in the window
-# ------------------------------------------
-# myButton1 = QPushButton('Open Image', w)
-# myButton1.move(20,80)
-
-# ------------------------------------------
-# -- Create file dialog
-# ------------------------------------------
-filename = QFileDialog.getOpenFileName(None, 'Open File', './', "BVH(*.bvh)")
-print(filename)
-
-# print file contents
-with open(filename, 'r') as f:
-    print(f.read())
-
-
-# ------------------------------------------
-# -- Show the window and run the app
-# ------------------------------------------
-w.show()
-myApp.exec_()
+tup = (3,4)
+print(tup[1])

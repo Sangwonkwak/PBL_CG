@@ -32,6 +32,8 @@ class WindowClass(QDialog, form_class):
         self.motion1FindButton.clicked.connect(self.showFile1)
         self.motion2FindButton.clicked.connect(self.showFile2)
         self.motionStitchingButton.clicked.connect(self.motionStitching_cb)
+        self.makeParticleButton.clicked.connect(self.makeParticle_cb)
+
 
     def setUi(self):
         self.setupUi(self)
@@ -47,14 +49,21 @@ class WindowClass(QDialog, form_class):
         self.frame.setStyleSheet("background-color: #83DCB7;")
 
         self.openGLWidget.setMainWindowView(self)
-        self.openGLWidget.addLabel(self.totalFrame)
-        self.openGLWidget.addLabel(self.currentFrame)
-        self.openGLWidget.addLabel(self.origin)
-        self.openGLWidget.addLabel(self.jointLabel)
+        # Label
+        self.openGLWidget.addBVHLabel(self.totalFrame)
+        self.openGLWidget.addBVHLabel(self.currentFrame)
+        self.openGLWidget.addBVHLabel(self.origin)
+        self.openGLWidget.addBVHLabel(self.jointLabel)
+        self.openGLWidget.addPhysicsLabel(self.timestepLabel)
+        self.openGLWidget.addPhysicsLabel(self.ksLabel)
+        self.openGLWidget.addPhysicsLabel(self.kdLabel)
+        ########
         self.jointLabel.setStyleSheet("background-color: #f89b00;")
         self.openGLWidget.setSlider(self.timeLine)
         
-        
+        # self.timer = QtCore.QTimer(self)
+        # self.timer.setInterval(10)
+        # self.timer.timeout.connect(self.openGLWidget.viewUpdate)
 
     def getOpenGL(self):
         return self.openGLWidget
@@ -82,6 +91,9 @@ class WindowClass(QDialog, form_class):
         self.currentFrame.setPresenter(presenter)
         self.origin.setPresenter(presenter)
         self.jointLabel.setPresenter(presenter)
+        self.timestepLabel.setPresenter(presenter)
+        self.ksLabel.setPresenter(presenter)
+        self.kdLabel.setPresenter(presenter)
     
     def setLineEditPresenter(self, presenter):
         self.LineEditPresenter = presenter
@@ -192,6 +204,32 @@ class WindowClass(QDialog, form_class):
         elif self.sinRadioButton3.isChecked():
             funcType = 1
         self.PushButtonPresenter.motionStitchingCB(self.motion1Label.text(),self.motion2Label.text(),funcType,int(self.sliceEdit.text()))
+
+    def makeParticle_cb(self):
+        if self.twoDRadioButton.isChecked():
+            modelType = 0
+        elif self.threeDRadioButton.isChecked():
+            modelType = 1
+        timestep = None
+        ks = None
+        kd = None
+        if self.timestepEdit.text():
+            timestep = float(self.timestepEdit.text())
+            self.timestepEdit.setText("")
+            # self.timer.setInterval(timestep * 1000)   # period, in millisecond
+        if self.ksEdit.text():
+            ks = int(self.ksEdit.text())
+            self.ksEdit.setText("")
+        if self.kdEdit.text():
+            kd = int(self.kdEdit.text())
+            self.kdEdit.setText("")
+        
+        if self.timer.isActive():
+            self.timer.stop()
+        self.timer.start()
+             
+        self.PushButtonPresenter.makeParticleCB(modelType,timestep,ks,kd)
+
 
 def main():
     app = QApplication(sys.argv)

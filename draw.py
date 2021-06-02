@@ -1,7 +1,10 @@
+
 from OpenGL.GL import *
 from OpenGL.GLU import *
 import numpy as np
 from data import *
+from particleSystem import *
+from particleSolver import *
 
 class Draw:
     def __init__(self, opengl_data, motion):
@@ -180,7 +183,100 @@ class Draw:
         if node.name != "__END__":
             for child in node.child:
                 self.drawModel(child, posture)
-            
+    
+    def makeParticle2D(self, ks, kd):
+        self.opengl_data.particleSystem = ParticleSystem()
+        self.opengl_data.dampingDataSet = []
+        self.opengl_data.particleSolver = ParticleSolver(self.opengl_data.particleSystem)
+
+        pos1 = np.array([40.,40.,0.])
+        pos2 = np.array([60.,70.,0.])
+        pos3 = np.array([30.,90.,0.])
+        vel1 = np.zeros(3)
+        vel2 = np.zeros(3)
+        vel3 = np.zeros(3)
+        f1 = np.zeros(3)
+        f2 = np.zeros(3)
+        f3 = np.zeros(3)
+        m1 = 3.
+        m2 = 3.
+        m3 = 3.
+        particle1 = np.concatenate((pos1,vel1,f1,m1),axis=None)
+        particle2 = np.concatenate((pos2,vel2,f2,m2),axis=None)
+        particle3 = np.concatenate((pos3,vel3,f3,m3),axis=None)
+        # ks = 30
+        # kd = 3
+        dampingData1 = DampingData(ks,kd,[0,1],uti.l2norm(pos1-pos2))
+        dampingData2 = DampingData(ks,kd,[1,2],uti.l2norm(pos2-pos3))
+        dampingData3 = DampingData(ks,kd,[0,2],uti.l2norm(pos1-pos3))
+
+        self.opengl_data.particleSystem.addParticle(particle1)
+        self.opengl_data.particleSystem.addParticle(particle2)
+        self.opengl_data.particleSystem.addParticle(particle3)
+        self.opengl_data.dampingDataSet.append(dampingData1)
+        self.opengl_data.dampingDataSet.append(dampingData2)
+        self.opengl_data.dampingDataSet.append(dampingData3)
+        self.opengl_data.Is_particleSystem_Empty = False
+
+    def makeParticle3D(self, ks, kd):
+        self.opengl_data.particleSystem = ParticleSystem()
+        self.opengl_data.dampingDataSet = []
+        self.opengl_data.particleSolver = ParticleSolver(self.opengl_data.particleSystem)
+
+        pos = [None for i in range(8)]
+        T = np.identity(4)
+        S = np.identity(4)
+        R = np.identity(4)
+
+        T[0:3,3] = np.array([20,28,20])
+        S[:3,:3] = 10 * S[:3,:3]
+        theta = np.radians(52)
+        R[:3,:3] = [[np.cos(theta), -np.sin(theta), 0.],
+                    [np.sin(theta), np.cos(theta), 0.],
+                    [0., 0., 1.]
+                    ]
+        M =  T @ S @ R
+        for i in range(8):
+            origin_pos = np.concatenate((self.varr[2*i+1],1.),axis=None)
+            pos[i] = (M @ origin_pos)[:-1]
+            # print(pos[i])
+
+        mass = [3,3,3,3,3,3,3,3]
+        particles = []
+        for p,m in zip(pos,mass):
+            particles.append(np.concatenate((p,np.zeros(3),np.zeros(3),m),axis=None))
+        # ks = 300
+        # kd = 10
+        # springPairSet = [(0,1),(1,2),(2,3),(3,0),(4,5),(5,6),(6,7),(7,4),(0,4),(1,5),(2,6),(3,7),(0,2),(1,3),(1,6),(2,5),(4,6),(5,7),(0,7),(4,3),(0,5),(1,4),(3,6),(2,7)]
+        springPairSet = []
+        for i in range(8):
+            for j in range(i+1,8):
+                springPairSet.append([i,j])
+        dampingDataSet = []
+        for pair in springPairSet:
+            # p1 = self.opengl_data.particleSystem.particles[pair[0]][0:3]
+            p1 = pos[pair[0]]
+            p2 = pos[pair[1]]
+            dampingDataSet.append(DampingData(ks,kd,pair,uti.l2norm(p1-p2)))
+
+        for particle in particles:
+            self.opengl_data.particleSystem.addParticle(particle)
+        for dampingData in dampingDataSet:
+            self.opengl_data.dampingDataSet.append(dampingData)
+        self.opengl_data.Is_particleSystem_Empty = False
+
+    def drawParticleSystem(self, timestep, normal_v):
+        # euler integration
+        self.opengl_data.particleSolver.eulerIntegration(timestep, self.opengl_data.dampingDataSet, normal_v)
+        glBegin(GL_LINES)
+        glColor3f(1.,0.,0.)
+        for dampingData in self.opengl_data.dampingDataSet:
+            x1 = self.opengl_data.particleSystem.particles[dampingData.particle_nums[0]][0:3]
+            x2 = self.opengl_data.particleSystem.particles[dampingData.particle_nums[1]][0:3]
+            glVertex3f(x1[0],x1[1],x1[2])
+            glVertex3f(x2[0],x2[1],x2[2])
+        glEnd()
+
     def render(self):
        
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -192,7 +288,7 @@ class Draw:
         data = self.opengl_data
         scale = data.scale
         glOrtho(-scale,scale,-scale,scale,-scale,scale)
-        # gluPerspective(45, 1, 1, 10)
+        # gluPerspective(10, 1, 1, 50)
         
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
@@ -203,11 +299,15 @@ class Draw:
         
         glPushMatrix()
         glScalef(200, 200, 200)
-        self.drawframe()
-        # self.drawgrid()
+        # self.drawframe()
+        self.drawgrid()
         glPopMatrix()
 
         # self.draw_unit_sphere()
+
+        # Particle Dynamics
+        if not self.opengl_data.Is_particleSystem_Empty:
+            self.drawParticleSystem(self.opengl_data.timestep, self.opengl_data.normal_v)
 
         if data.POINT_FLAG:
             glPushMatrix()
